@@ -115,7 +115,18 @@ jobs:
         printf '%s\n' "$USIGN_PUBLIC_KEY" > files/etc/opkg/keys/af48b2d3aa331a20
         chmod 644 files/etc/opkg/keys/af48b2d3aa331a20
         make package/index V=sc
+        ARCHIVE_NAME="OpenWrt_packages${DEVICE_NAME:-}${FILE_DATE:-}.tar.gz"
+        ARCHIVE_PATH="$GITHUB_WORKSPACE/$ARCHIVE_NAME"
+        tar -czf "$ARCHIVE_PATH" -C bin packages
+        echo "PACKAGES_ARCHIVE=$ARCHIVE_PATH" >> $GITHUB_ENV
         rm -f key-build
+
+    - name: Upload IPK archive artifact
+      uses: actions/upload-artifact@main
+      if: env.PACKAGES_ARCHIVE != '' && !cancelled()
+      with:
+        name: OpenWrt_packages${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: ${{ env.PACKAGES_ARCHIVE }}
 
     - name: Check space usage
       if: (!cancelled())
@@ -162,6 +173,15 @@ jobs:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
+
+    - name: Upload IPK archive to release
+      uses: softprops/action-gh-release@master
+      if: steps.tag.outputs.status == 'success' && env.PACKAGES_ARCHIVE != '' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        files: ${{ env.PACKAGES_ARCHIVE }}
 
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@main
