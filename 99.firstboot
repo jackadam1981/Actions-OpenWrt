@@ -1,5 +1,5 @@
 #luci-i18n-package-manager-zh-cn luci-i18n-base-zh-cn luci-i18n-firewall-zh-cn relayd luci-proto-relay p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn
-
+# V1.1
 #!/bin/sh
 
 ##############################################
@@ -70,6 +70,20 @@ remove_wan_forwardings() {
     dest="$(uci -q get firewall.@forwarding[$idx].dest 2>/dev/null)"
     if [ "$src" = "wan" ] || [ "$dest" = "wan" ]; then
       uci delete firewall.@forwarding[$idx]
+      continue
+    fi
+    idx=$((idx + 1))
+  done
+}
+
+remove_wan_rules() {
+  local idx=0
+  while uci -q get firewall.@rule[$idx] >/dev/null 2>&1; do
+    local src dest
+    src="$(uci -q get firewall.@rule[$idx].src 2>/dev/null)"
+    dest="$(uci -q get firewall.@rule[$idx].dest 2>/dev/null)"
+    if [ "$src" = "wan" ] || [ "$dest" = "wan" ]; then
+      uci delete firewall.@rule[$idx]
       continue
     fi
     idx=$((idx + 1))
@@ -184,6 +198,7 @@ ensure_list_value "firewall.@zone[0]" "network" "${WIFI_NETWORK_v6}" || die "防
 if uci -q show firewall.wan >/dev/null 2>&1; then
   uci delete firewall.wan
   remove_wan_forwardings
+  remove_wan_rules
   log "已删除防火墙区域 wan"
 else
   log "未发现防火墙区域 wan，跳过删除"
@@ -200,9 +215,11 @@ uci set dhcp.lan.ignore='1'
 uci commit || die "配置提交失败" 402
 log "所有配置已提交"
 
-# 重启防火墙
-service firewall restart || die "防火墙重启失败" 403
-log "防火墙服务已重启"
+# 重载防火墙
+if ! (fw4 reload 2>&1 | tee -a "$LOG_FILE"); then
+  die "防火墙重载失败" 403
+fi
+log "防火墙服务已重新加载"
 
 ##############################################
 # 阶段 5/5：启用 LuCI 打印服务
@@ -210,6 +227,13 @@ log "防火墙服务已重启"
 log "--- 阶段5/5：启用 LuCI 打印服务 ---"
 uci set p910nd.@p910nd[0].enabled='1'
 uci commit p910nd
+if ! (/etc/init.d/p910nd enable 2>&1 | tee -a "$LOG_FILE"); then
+  die "启用 p910nd 自启动失败" 500
+fi
+if ! (/etc/init.d/p910nd start 2>&1 | tee -a "$LOG_FILE"); then
+  die "启动 p910nd 服务失败" 501
+fi
+log "p910nd 服务已启用并启动"
 
 ##############################################
 # 完成提示
