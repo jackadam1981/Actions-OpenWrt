@@ -1,0 +1,202 @@
+#luci-i18n-package-manager-zh-cn luci-i18n-base-zh-cn luci-i18n-firewall-zh-cn relayd luci-proto-relay
+
+#!/bin/sh
+
+##############################################
+# 集中式变量配置区（所有可调参数在此设置）
+##############################################
+
+### 系统基础配置 ###
+ROOT_PASSWORD="12345678"         # 管理员密码
+NETWORK_HOSTNAME="openwrt-print" # 设备主机名
+TIMEZONE="UTC+8"                 # 时区设置
+ZONENAME="Asia/Shanghai"         # 时区名称
+
+### 无线客户端配置 ###
+WIFI_SSID='Openwrt_2.4G'         # 上级WiFi名称
+WIFI_ENCRYPTION='psk2'           # 加密方式
+WIFI_DEVICE='radio0'             # 无线设备名称
+WIFI_BSSID='AA:BB:CC:DD:EE:FF'   # 上级AP的MAC地址
+WIFI_KEY='12345678'              # WiFi连接密码
+WIFI_IFNAME='WifiClient'         # 无线接口名称
+WIFI_NETWORK_v4='wlan4'          # 关联的网络接口
+WIFI_NETWORK_v6='wlan6'          # 关联的网络接口
+
+### 中继配置 ###
+RELAY_PROTO='relay'             # 中继协议类型
+RELAY_IP='192.168.2.3'          # 中继IP地址(上游网段，不冲突地址)
+RELAY_NETMASK='255.255.255.0'   # 中继子网掩码
+RELAY_IFNAME='relay'            # 中继接口名称
+RELAY_LOCAL_IFNAME='lan'        # 本地接口名称
+MGMT_IP='192.168.100.1'         # 本地管理地址
+MGMT_NETMASK='255.255.255.0'    # 本地管理子网掩码
+
+### 防火墙配置 ###
+FIREWALL_ZONE='lan'             # 目标防火墙区域
+
+### 日志配置 ###
+LOG_FILE="/var/log/deploy.log"    # 操作日志路径
+
+##############################################
+# 初始化核心逻辑（非必要请勿修改）
+##############################################
+
+### 函数定义 ###
+
+# 确保日志目录存在
+LOG_DIR="$(dirname "$LOG_FILE")"
+[ -d "$LOG_DIR" ] || mkdir -p "$LOG_DIR"
+
+# 简易日志记录（同时输出到控制台和日志文件）
+log() {
+  local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$timestamp] $1" | tee -a "$LOG_FILE"
+}
+ensure_list_value() {
+  local config="$1" option="$2" value="$3"
+  local current
+  current="$(uci -q get "$config.$option" 2>/dev/null || echo "")"
+  for item in $current; do
+    [ "$item" = "$value" ] && return 0
+  done
+  uci add_list "$config.$option=$value"
+}
+
+
+# 错误处理函数
+die() {
+  log "执行失败：$1 (错误码：$2)"
+  echo "! 初始化失败，请检查 $LOG_FILE !" >&2
+  exit $2
+}
+
+### 执行流程 ###
+
+log "=== 开始执行OpenWrt网络初始化脚本 ==="
+
+##############################################
+# 阶段 1/4：系统基础配置
+##############################################
+log "--- 阶段1/4：配置系统参数 ---"
+
+# 设置root密码
+if [ -n "${ROOT_PASSWORD}" ]; then
+  if ! (echo -e "${ROOT_PASSWORD}\n${ROOT_PASSWORD}" | passwd root 2>&1 | tee -a "$LOG_FILE"); then
+    die "密码设置失败，请检查复杂度" 101
+  fi
+  log "系统管理员密码已更新"
+fi
+
+# 配置基础系统参数
+uci batch <<EOF 2>&1 | tee -a "$LOG_FILE" || die "系统参数写入失败" 102
+set system.@system[0].hostname='${NETWORK_HOSTNAME}'
+set system.@system[0].timezone='${TIMEZONE}'
+set system.@system[0].zonename='${ZONENAME}'
+commit
+EOF
+log "系统主机名与时区配置完成"
+
+# 配置本地管理地址
+log "--- 附加：配置本地管理地址 ---"
+uci set network.${RELAY_LOCAL_IFNAME}.proto='static'
+uci set network.${RELAY_LOCAL_IFNAME}.ipaddr="${MGMT_IP}"
+uci set network.${RELAY_LOCAL_IFNAME}.netmask="${MGMT_NETMASK}"
+uci set network.${RELAY_LOCAL_IFNAME}.gateway=''
+uci set network.${RELAY_LOCAL_IFNAME}.dns=''
+log "本地管理地址已设置为 ${MGMT_IP}/${MGMT_NETMASK}"
+
+##############################################
+# 阶段 2/4：无线客户端配置
+##############################################
+log "--- 阶段2/4：配置无线客户端 ---"
+
+# 创建网络接口
+uci set network.${WIFI_NETWORK_v4}=interface || die "创建IPv4接口失败" 201
+uci set network.${WIFI_NETWORK_v4}.proto='static'
+uci set network.${WIFI_NETWORK_v4}.ipaddr="${RELAY_IP}"
+uci set network.${WIFI_NETWORK_v4}.netmask="${RELAY_NETMASK}"
+
+uci set network.${WIFI_NETWORK_v6}=interface || die "创建IPv6接口失败" 202
+uci set network.${WIFI_NETWORK_v6}.proto='dhcpv6'
+uci set network.${WIFI_NETWORK_v6}.reqaddress='try'
+uci set network.${WIFI_NETWORK_v6}.reqprefix='auto'
+uci set network.${WIFI_NETWORK_v6}.norelease='1'
+log "网络接口wlan4/wlan6初始化完成"
+
+# 配置无线设备
+uci set wireless.${WIFI_DEVICE}.disabled='0' || die "启用无线设备失败" 203
+uci set wireless.${WIFI_DEVICE}.cell_density='0'
+
+# 配置STA模式
+uci set wireless.default_${WIFI_DEVICE}.disabled='0'
+uci set wireless.default_${WIFI_DEVICE}.mode='sta'
+uci set wireless.default_${WIFI_DEVICE}.bssid="${WIFI_BSSID}"
+uci set wireless.default_${WIFI_DEVICE}.ifname="${WIFI_IFNAME}"
+uci set wireless.default_${WIFI_DEVICE}.ipv6='1'
+uci set wireless.default_${WIFI_DEVICE}.device="${WIFI_DEVICE}"
+uci set wireless.default_${WIFI_DEVICE}.ssid="${WIFI_SSID}"
+uci set wireless.default_${WIFI_DEVICE}.encryption="${WIFI_ENCRYPTION}"
+uci set wireless.default_${WIFI_DEVICE}.key="${WIFI_KEY}"
+uci set wireless.default_${WIFI_DEVICE}.network="${WIFI_NETWORK_v4} ${WIFI_NETWORK_v6}"
+log "无线客户端配置完成（SSID：${WIFI_SSID}）"
+
+##############################################
+# 阶段 3/4：中继桥配置
+##############################################
+log "--- 阶段3/4：配置中继桥接 ---"
+
+# 创建中继接口
+uci set network.${RELAY_IFNAME}=interface || die "创建中继接口失败" 301
+uci set network.${RELAY_IFNAME}.proto="${RELAY_PROTO}"
+uci set network.${RELAY_IFNAME}.ipaddr="${RELAY_IP}"
+uci set network.${RELAY_IFNAME}.netmask="${RELAY_NETMASK}"
+
+# 绑定桥接网络
+ensure_list_value "network.${RELAY_IFNAME}" "network" "${RELAY_LOCAL_IFNAME}"
+ensure_list_value "network.${RELAY_IFNAME}" "network" "${WIFI_NETWORK_v4}"
+ensure_list_value "network.${RELAY_IFNAME}" "network" "${WIFI_NETWORK_v6}"
+log "中继桥接规则已绑定"
+
+##############################################
+# 阶段 4/4：防火墙与服务配置
+##############################################
+log "--- 阶段4/4：配置防火墙策略 ---"
+
+# 调整防火墙区域
+ensure_list_value "firewall.@zone[0]" "network" "${WIFI_NETWORK_v4}" || die "防火墙配置失败(IPv4)" 401
+ensure_list_value "firewall.@zone[0]" "network" "${WIFI_NETWORK_v6}" || die "防火墙配置失败(IPv6)" 401
+
+# 删除防火墙区域wan（若存在）
+if uci -q show firewall.wan >/dev/null 2>&1; then
+  uci delete firewall.wan
+  log "已删除防火墙区域 wan"
+else
+  log "未发现防火墙区域 wan，跳过删除"
+fi
+
+# 禁用LAN DHCP
+uci set dhcp.lan.ignore='1'
+
+# 禁用dnsmasq
+/etc/init.d/dnsmasq disable && log "已禁用DNSmasq服务"
+/etc/init.d/dnsmasq stop && log "已停止DNSmasq进程"
+
+# 提交配置变更
+uci commit || die "配置提交失败" 402
+log "所有配置已提交"
+
+# 重启防火墙
+service firewall restart || die "防火墙重启失败" 403
+log "防火墙服务已重启"
+
+
+##############################################
+# 完成提示
+##############################################
+log "=== 网络初始化脚本执行完毕 ==="
+echo "----------------------------------------"
+echo "  执行结果："
+echo "  中继IP：$RELAY_IP"
+echo "  日志路径：$LOG_FILE"
+echo "----------------------------------------"
+exit 0
