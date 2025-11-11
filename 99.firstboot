@@ -193,16 +193,16 @@ service firewall restart || die "防火墙重启失败" 403
 log "防火墙服务已重启"
 
 ##############################################
-# 阶段 5/5：安装 LuCI 打印服务
+# 阶段 5/5：启用 LuCI 打印服务
 ##############################################
-log "--- 阶段5/5：安装 LuCI 打印服务 ---"
-if ! (opkg update 2>&1 | tee -a "$LOG_FILE"); then
-  die "软件包列表更新失败" 500
+log "--- 阶段5/5：启用 LuCI 打印服务 ---"
+if ! (/etc/init.d/p910nd enable 2>&1 | tee -a "$LOG_FILE"); then
+  die "启用 p910nd 自启动失败" 500
 fi
-if ! (opkg install luci-app-p910nd p910nd 2>&1 | tee -a "$LOG_FILE"); then
-  die "安装 luci-app-p910nd/p910nd 失败" 501
+if ! (/etc/init.d/p910nd start 2>&1 | tee -a "$LOG_FILE"); then
+  die "启动 p910nd 服务失败" 501
 fi
-log "LuCI 打印服务组件已安装完成"
+log "LuCI 打印服务组件已启用并启动"
 
 
 ##############################################
