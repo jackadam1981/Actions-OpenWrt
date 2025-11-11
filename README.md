@@ -22,6 +22,11 @@ A template for building OpenWrt with GitHub Actions
 - It may take a long time to create a `.config` file and build the OpenWrt firmware. Thus, before create repository to build your own firmware, you may check out if others have already built it which meet your needs by simply [search `Actions-Openwrt` in GitHub](https://github.com/search?q=Actions-openwrt).
 - Add some meta info of your built firmware (such as firmware architecture and installed packages) to your repository introduction, this will save others' time.
 
+## Customization Notes
+
+- This repository currently targets the `ramips/rt305x` SoC family (VoCore 8M).
+- Rust toolchain packages (`cargo`, `rust`, `rust-src`, `rustfmt`) are explicitly disabled in `.config`, because the upstream build script refuses to download CI LLVM artifacts when the `CI` environment variable is set. Re-enable them only when building in an environment where that restriction does not apply.
+
 ## Credits
 
 - [Microsoft Azure](https://azure.microsoft.com)
