@@ -7,7 +7,7 @@
 ##############################################
 
 ### 系统基础配置 ###
-ROOT_PASSWORD="12345678"         # 管理员密码
+ROOT_PASSWORD=""         # 管理员密码
 NETWORK_HOSTNAME="openwrt-print" # 设备主机名
 TIMEZONE="UTC+8"                 # 时区设置
 ZONENAME="Asia/Shanghai"         # 时区名称
@@ -28,7 +28,6 @@ RELAY_IP='192.168.2.3'          # 中继IP地址(上游网段，不冲突地址)
 RELAY_NETMASK='255.255.255.0'   # 中继子网掩码
 RELAY_IFNAME='relay'            # 中继接口名称
 RELAY_LOCAL_IFNAME='lan'        # 本地接口名称
-MGMT_IFNAME='lanmanagement'     # 本地管理别名接口
 MGMT_IP='192.168.100.1'         # 本地管理地址
 MGMT_NETMASK='255.255.255.0'    # 本地管理子网掩码
 
@@ -61,6 +60,20 @@ ensure_list_value() {
     [ "$item" = "$value" ] && return 0
   done
   uci add_list "$config.$option=$value"
+}
+
+remove_wan_forwardings() {
+  local idx=0
+  while uci -q get firewall.@forwarding[$idx] >/dev/null 2>&1; do
+    local src dest
+    src="$(uci -q get firewall.@forwarding[$idx].src 2>/dev/null)"
+    dest="$(uci -q get firewall.@forwarding[$idx].dest 2>/dev/null)"
+    if [ "$src" = "wan" ] || [ "$dest" = "wan" ]; then
+      uci delete firewall.@forwarding[$idx]
+      continue
+    fi
+    idx=$((idx + 1))
+  done
 }
 
 
@@ -97,16 +110,14 @@ commit
 EOF
 log "系统主机名与时区配置完成"
 
-# 配置本地管理别名接口
-log "--- 附加：配置本地管理别名接口 ---"
-uci set network.${MGMT_IFNAME}=interface
-uci set network.${MGMT_IFNAME}.proto='static'
-uci set network.${MGMT_IFNAME}.ipaddr="${MGMT_IP}"
-uci set network.${MGMT_IFNAME}.netmask="${MGMT_NETMASK}"
-uci set network.${MGMT_IFNAME}.ifname='@lan'
-uci set network.${MGMT_IFNAME}.gateway=''
-uci set network.${MGMT_IFNAME}.dns=''
-log "本地管理别名接口 ${MGMT_IFNAME} 已设置为 ${MGMT_IP}/${MGMT_NETMASK}"
+# 配置本地管理地址
+log "--- 附加：配置本地管理地址 ---"
+uci set network.${RELAY_LOCAL_IFNAME}.proto='static'
+uci set network.${RELAY_LOCAL_IFNAME}.ipaddr="${MGMT_IP}"
+uci set network.${RELAY_LOCAL_IFNAME}.netmask="${MGMT_NETMASK}"
+uci set network.${RELAY_LOCAL_IFNAME}.gateway=''
+uci set network.${RELAY_LOCAL_IFNAME}.dns=''
+log "本地接口 ${RELAY_LOCAL_IFNAME} 已设置为 ${MGMT_IP}/${MGMT_NETMASK}"
 
 ##############################################
 # 阶段 2/5：无线客户端配置
@@ -172,6 +183,7 @@ ensure_list_value "firewall.@zone[0]" "network" "${WIFI_NETWORK_v6}" || die "防
 # 删除防火墙区域wan（若存在）
 if uci -q show firewall.wan >/dev/null 2>&1; then
   uci delete firewall.wan
+  remove_wan_forwardings
   log "已删除防火墙区域 wan"
 else
   log "未发现防火墙区域 wan，跳过删除"
@@ -196,14 +208,8 @@ log "防火墙服务已重启"
 # 阶段 5/5：启用 LuCI 打印服务
 ##############################################
 log "--- 阶段5/5：启用 LuCI 打印服务 ---"
-if ! (/etc/init.d/p910nd enable 2>&1 | tee -a "$LOG_FILE"); then
-  die "启用 p910nd 自启动失败" 500
-fi
-if ! (/etc/init.d/p910nd start 2>&1 | tee -a "$LOG_FILE"); then
-  die "启动 p910nd 服务失败" 501
-fi
-log "LuCI 打印服务组件已启用并启动"
-
+uci set p910nd.@p910nd[0].enabled='1'
+uci commit p910nd
 
 ##############################################
 # 完成提示
