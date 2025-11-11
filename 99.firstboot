@@ -28,6 +28,7 @@ RELAY_IP='192.168.2.3'          # 中继IP地址(上游网段，不冲突地址)
 RELAY_NETMASK='255.255.255.0'   # 中继子网掩码
 RELAY_IFNAME='relay'            # 中继接口名称
 RELAY_LOCAL_IFNAME='lan'        # 本地接口名称
+MGMT_IFNAME='lanbackup'         # 本地管理别名接口
 MGMT_IP='192.168.100.1'         # 本地管理地址
 MGMT_NETMASK='255.255.255.0'    # 本地管理子网掩码
 
@@ -96,14 +97,16 @@ commit
 EOF
 log "系统主机名与时区配置完成"
 
-# 配置本地管理地址
-log "--- 附加：配置本地管理地址 ---"
-uci set network.${RELAY_LOCAL_IFNAME}.proto='static'
-uci set network.${RELAY_LOCAL_IFNAME}.ipaddr="${MGMT_IP}"
-uci set network.${RELAY_LOCAL_IFNAME}.netmask="${MGMT_NETMASK}"
-uci set network.${RELAY_LOCAL_IFNAME}.gateway=''
-uci set network.${RELAY_LOCAL_IFNAME}.dns=''
-log "本地管理地址已设置为 ${MGMT_IP}/${MGMT_NETMASK}"
+# 配置本地管理别名接口
+log "--- 附加：配置本地管理别名接口 ---"
+uci set network.${MGMT_IFNAME}=interface
+uci set network.${MGMT_IFNAME}.proto='static'
+uci set network.${MGMT_IFNAME}.ipaddr="${MGMT_IP}"
+uci set network.${MGMT_IFNAME}.netmask="${MGMT_NETMASK}"
+uci set network.${MGMT_IFNAME}.ifname='@lan'
+uci set network.${MGMT_IFNAME}.gateway=''
+uci set network.${MGMT_IFNAME}.dns=''
+log "本地管理别名接口 ${MGMT_IFNAME} 已设置为 ${MGMT_IP}/${MGMT_NETMASK}"
 
 ##############################################
 # 阶段 2/4：无线客户端配置
