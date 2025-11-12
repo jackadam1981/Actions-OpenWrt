@@ -138,7 +138,7 @@ jobs:
         echo "Disk usage for bin/packages:"
         du -sh bin/packages || true
         echo "Total size of packages to be archived:"
-        du -ch bin/packages/*/*.ipk 2>/dev/null | tail -1 || echo "No IPK files found"
+        find bin/packages -name "*.ipk" -exec du -ch {} + 2>/dev/null | tail -1 || echo "No IPK files found"
         echo "IPK file count per feed:"
         find bin/packages -maxdepth 2 -type d -print0 | xargs -0 -I{} sh -c "echo \"  {}:\"; find \"{}\" -maxdepth 1 -name '*.ipk' | wc -l"
         echo "Largest 20 IPK files:"
