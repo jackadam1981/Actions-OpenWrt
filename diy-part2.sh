@@ -18,3 +18,6 @@
 
 # Modify hostname
 #sed -i 's/OpenWrt/P3TERX-Router/g' package/base-files/files/bin/config_generate
+
+# Enable CUPS printing support
+echo 'CONFIG_PACKAGE_cups=m' >> .config
