@@ -15,6 +15,11 @@ name: OpenWrt Builder
 on:
   repository_dispatch:
   workflow_dispatch:
+    inputs:
+      repo_branch:
+        description: 'OpenWrt source branch to build'
+        required: false
+        default: openwrt-24.10
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
@@ -49,6 +54,19 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
+
+    - name: Resolve source branch
+      run: |
+        branch_input="${{ github.event.inputs.repo_branch }}"
+        client_branch="${{ github.event.client_payload.repo_branch }}"
+        if [ -n "$branch_input" ]; then
+          echo "REPO_BRANCH=$branch_input" >> $GITHUB_ENV
+        elif [ -n "$client_branch" ]; then
+          echo "REPO_BRANCH=$client_branch" >> $GITHUB_ENV
+        else
+          echo "REPO_BRANCH=${REPO_BRANCH}" >> $GITHUB_ENV
+        fi
+        echo "SOURCE_BRANCH=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
     - name: Clone source code
       working-directory: /workdir
@@ -115,6 +133,10 @@ jobs:
         printf '%s\n' "$USIGN_PUBLIC_KEY" > files/etc/opkg/keys/af48b2d3aa331a20
         chmod 644 files/etc/opkg/keys/af48b2d3aa331a20
         make package/index V=sc
+        echo "Listing bin/packages contents before archiving:"
+        ls -R bin/packages || true
+        echo "Listing files in the previous package archive (if present):"
+        ls "$GITHUB_WORKSPACE" | grep '^OpenWrt_packages' || true
         ARCHIVE_NAME="OpenWrt_packages${DEVICE_NAME:-}${FILE_DATE:-}.tar.gz"
         ARCHIVE_PATH="$GITHUB_WORKSPACE/$ARCHIVE_NAME"
         tar -czf "$ARCHIVE_PATH" -C bin packages
