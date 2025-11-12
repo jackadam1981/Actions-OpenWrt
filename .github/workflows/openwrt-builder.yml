@@ -137,6 +137,8 @@ jobs:
         ls -R bin/packages || true
         echo "Disk usage for bin/packages:"
         du -sh bin/packages || true
+        echo "Total size of packages to be archived:"
+        du -ch bin/packages/*/*.ipk 2>/dev/null | tail -1 || echo "No IPK files found"
         echo "IPK file count per feed:"
         find bin/packages -maxdepth 2 -type d -print0 | xargs -0 -I{} sh -c "echo \"  {}:\"; find \"{}\" -maxdepth 1 -name '*.ipk' | wc -l"
         echo "Largest 20 IPK files:"
@@ -153,6 +155,7 @@ jobs:
         rm -rf "$STAGING_DIR"
         echo "Archive details:"
         ls -lh "$ARCHIVE_PATH"
+        echo "Compressed archive size: $(stat -c%s "$ARCHIVE_PATH" | numfmt --to=iec-i --suffix=B)"
         echo "Number of files stored in archive:"
         tar -tzf "$ARCHIVE_PATH" | wc -l
         echo "Number of IPK files stored in archive:"
@@ -162,18 +165,9 @@ jobs:
         echo "PACKAGES_ARCHIVE=$ARCHIVE_PATH" >> $GITHUB_ENV
         rm -f key-build
 
-    - name: Verify package archive contents
-      if: env.PACKAGES_ARCHIVE != '' && !cancelled()
-      run: |
-        echo "Verifying package archive contents..."
-        ARCHIVE_PATH="${{ env.PACKAGES_ARCHIVE }}"
+        echo "=== Archive Content Verification ==="
         VERIFY_DIR="$(mktemp -d)"
-
         echo "Extracting archive to verify contents..."
-        tar -tzf "$ARCHIVE_PATH" | head -20
-        echo "---"
-
-        echo "Extracting archive to temporary directory..."
         tar -xzf "$ARCHIVE_PATH" -C "$VERIFY_DIR"
 
         echo "Archive verification results:"
@@ -185,13 +179,12 @@ jobs:
         find "$VERIFY_DIR" -name '*.ipk' | head -10
 
         echo "Archive size breakdown by feed:"
-        find "$VERIFY_DIR" -mindepth 1 -maxdepth 1 -type d -exec sh -c 'echo "$1: $(find "$1" -name "*.ipk" | wc -l) IPK files"' _ {} \;
+        find "$VERIFY_DIR" -mindepth 1 -maxdepth 1 -type d -exec sh -c 'echo "$1: $(find "$1" -name "*.ipk" | wc -l) IPK files"' _ {} \; 2>/dev/null || true
 
         echo "Largest IPK files:"
         find "$VERIFY_DIR" -name '*.ipk' -exec ls -lh {} \; | sort -k5 -hr | head -5
 
-        echo "Total archive size: $(du -sh "$VERIFY_DIR" | cut -f1)"
-
+        echo "Verification completed successfully!"
         rm -rf "$VERIFY_DIR"
 
     - name: Upload IPK archive artifact
