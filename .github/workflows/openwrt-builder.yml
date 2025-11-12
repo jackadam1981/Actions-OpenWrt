@@ -139,7 +139,7 @@ jobs:
         ls "$GITHUB_WORKSPACE" | grep '^OpenWrt_packages' || true
         ARCHIVE_NAME="OpenWrt_packages${DEVICE_NAME:-}${FILE_DATE:-}.tar.gz"
         ARCHIVE_PATH="$GITHUB_WORKSPACE/$ARCHIVE_NAME"
-        tar -czf "$ARCHIVE_PATH" -C bin packages
+        tar -czhf "$ARCHIVE_PATH" -C bin packages
         echo "PACKAGES_ARCHIVE=$ARCHIVE_PATH" >> $GITHUB_ENV
         rm -f key-build
 
