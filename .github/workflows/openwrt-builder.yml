@@ -135,11 +135,16 @@ jobs:
         make package/index V=sc
         echo "Listing bin/packages contents before archiving:"
         ls -R bin/packages || true
+        echo "Disk usage for bin/packages:"
+        du -sh bin/packages || true
         echo "Listing files in the previous package archive (if present):"
         ls "$GITHUB_WORKSPACE" | grep '^OpenWrt_packages' || true
         ARCHIVE_NAME="OpenWrt_packages${DEVICE_NAME:-}${FILE_DATE:-}.tar.gz"
         ARCHIVE_PATH="$GITHUB_WORKSPACE/$ARCHIVE_NAME"
-        tar -czhf "$ARCHIVE_PATH" -C bin packages
+        STAGING_DIR="$(mktemp -d)"
+        rsync -aL bin/packages/ "$STAGING_DIR/"
+        tar -czf "$ARCHIVE_PATH" -C "$STAGING_DIR" .
+        rm -rf "$STAGING_DIR"
         echo "PACKAGES_ARCHIVE=$ARCHIVE_PATH" >> $GITHUB_ENV
         rm -f key-build
 
