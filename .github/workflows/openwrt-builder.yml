@@ -162,6 +162,38 @@ jobs:
         echo "PACKAGES_ARCHIVE=$ARCHIVE_PATH" >> $GITHUB_ENV
         rm -f key-build
 
+    - name: Verify package archive contents
+      if: env.PACKAGES_ARCHIVE != '' && !cancelled()
+      run: |
+        echo "Verifying package archive contents..."
+        ARCHIVE_PATH="${{ env.PACKAGES_ARCHIVE }}"
+        VERIFY_DIR="$(mktemp -d)"
+
+        echo "Extracting archive to verify contents..."
+        tar -tzf "$ARCHIVE_PATH" | head -20
+        echo "---"
+
+        echo "Extracting archive to temporary directory..."
+        tar -xzf "$ARCHIVE_PATH" -C "$VERIFY_DIR"
+
+        echo "Archive verification results:"
+        echo "Total files in archive: $(find "$VERIFY_DIR" -type f | wc -l)"
+        echo "IPK files in archive: $(find "$VERIFY_DIR" -name '*.ipk' | wc -l)"
+        echo "Index files in archive: $(find "$VERIFY_DIR" -name 'Packages*' | wc -l)"
+
+        echo "Sample IPK files:"
+        find "$VERIFY_DIR" -name '*.ipk' | head -10
+
+        echo "Archive size breakdown by feed:"
+        find "$VERIFY_DIR" -mindepth 1 -maxdepth 1 -type d -exec sh -c 'echo "$1: $(find "$1" -name "*.ipk" | wc -l) IPK files"' _ {} \;
+
+        echo "Largest IPK files:"
+        find "$VERIFY_DIR" -name '*.ipk' -exec ls -lh {} \; | sort -k5 -hr | head -5
+
+        echo "Total archive size: $(du -sh "$VERIFY_DIR" | cut -f1)"
+
+        rm -rf "$VERIFY_DIR"
+
     - name: Upload IPK archive artifact
       uses: actions/upload-artifact@main
       if: env.PACKAGES_ARCHIVE != '' && !cancelled()
