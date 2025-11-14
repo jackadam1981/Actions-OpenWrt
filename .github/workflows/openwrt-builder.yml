@@ -59,14 +59,17 @@ jobs:
       run: |
         branch_input="${{ github.event.inputs.repo_branch }}"
         client_branch="${{ github.event.client_payload.repo_branch }}"
+        source_ref="${GITHUB_REF_NAME}"
         if [ -n "$branch_input" ]; then
           echo "REPO_BRANCH=$branch_input" >> $GITHUB_ENV
         elif [ -n "$client_branch" ]; then
           echo "REPO_BRANCH=$client_branch" >> $GITHUB_ENV
+        elif [ "$source_ref" = "main" ]; then
+          echo "REPO_BRANCH=openwrt-main" >> $GITHUB_ENV
         else
           echo "REPO_BRANCH=${REPO_BRANCH}" >> $GITHUB_ENV
         fi
-        echo "SOURCE_BRANCH=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+        echo "SOURCE_BRANCH=$source_ref" >> $GITHUB_ENV
 
     - name: Clone source code
       working-directory: /workdir
