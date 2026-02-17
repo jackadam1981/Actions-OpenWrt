@@ -131,15 +131,6 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    - name: Apply target overlay (target/linux, etc)
-      run: |
-        if [ -d "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/target" ]; then
-          rsync -a "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/target/" openwrt/target/
-        fi
-        if [ -d "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/etc" ]; then
-          rsync -a "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/etc/" openwrt/package/base-files/files/etc/
-        fi
-
     - name: Download package
       id: package
       run: |
