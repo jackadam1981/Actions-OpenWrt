@@ -10,9 +10,13 @@
 # See /LICENSE for more information.
 #
 
-name: OpenWrt Builder
+name: My OpenWrt Builder
 
 on:
+  push:
+    paths:
+      - 'targets/**'
+      - '.github/workflows/my-openwrt-builder.yml'
   repository_dispatch:
   workflow_dispatch:
 
@@ -21,6 +25,7 @@ env:
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
+  TARGETS_DIR: targets
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: false
@@ -29,10 +34,58 @@ env:
   TZ: Asia/Shanghai
 
 jobs:
-  build:
+  list-configs:
     runs-on: ubuntu-22.04
+    outputs:
+      configs: ${{ steps.list.outputs.configs }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: List targets (targets/<name>/.config)
+      id: list
+      run: |
+        if [ -d "$TARGETS_DIR" ] && [ -n "$(ls -A $TARGETS_DIR 2>/dev/null)" ]; then
+          configs="["
+          first=1
+          for t in $(ls -A "$TARGETS_DIR" 2>/dev/null); do
+            [ -f "$TARGETS_DIR/$t/.config" ] || continue
+            [ "$first" -eq 0 ] && configs="$configs,"
+            configs="$configs\"$TARGETS_DIR/$t/.config\""
+            first=0
+          done
+          configs="$configs]"
+          if [ "$configs" = "[]" ]; then
+            echo 'configs=["'"$CONFIG_FILE"'"]' >> $GITHUB_OUTPUT
+          else
+            echo "configs=$configs" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo 'configs=["'"$CONFIG_FILE"'"]' >> $GITHUB_OUTPUT
+        fi
+
+  build:
+    needs: list-configs
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.list-configs.outputs.configs) }}
 
     steps:
+    - name: Set target name and config slug
+      run: |
+        cfg="${{ matrix.config }}"
+        if [[ "$cfg" == targets/*/.config ]]; then
+          TARGET_NAME="${cfg#targets/}"
+          TARGET_NAME="${TARGET_NAME%/.config}"
+          echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
+          echo "CONFIG_SLUG=$TARGET_NAME" >> $GITHUB_ENV
+        else
+          echo "TARGET_NAME=" >> $GITHUB_ENV
+          echo "CONFIG_SLUG=$(echo "$cfg" | sed 's/\//-/g')" >> $GITHUB_ENV
+        fi
+
     - name: Checkout
       uses: actions/checkout@main
 
@@ -73,10 +126,19 @@ jobs:
     - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        cp '${{ matrix.config }}' openwrt/$CONFIG_FILE
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
+
+    - name: Apply target overlay (target/linux, etc)
+      run: |
+        if [ -d "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/target" ]; then
+          rsync -a "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/target/" openwrt/target/
+        fi
+        if [ -d "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/etc" ]; then
+          rsync -a "$GITHUB_WORKSPACE/$TARGETS_DIR/$TARGET_NAME/etc/" openwrt/package/base-files/files/etc/
+        fi
 
     - name: Download package
       id: package
@@ -106,7 +168,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        name: OpenWrt_bin_${{ env.CONFIG_SLUG }}${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
 
     - name: Organize files
@@ -122,27 +184,32 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        name: OpenWrt_firmware_${{ env.CONFIG_SLUG }}${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
+  release:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Download all firmware artifacts
+      if: env.UPLOAD_RELEASE == 'true'
+      uses: actions/download-artifact@main
+
     - name: Generate release tag
+      if: env.UPLOAD_RELEASE == 'true'
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        touch release.txt
-        [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
-        echo "status=success" >> $GITHUB_OUTPUT
+      run: echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
+      if: env.UPLOAD_RELEASE == 'true'
       uses: softprops/action-gh-release@master
-      if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
+        body: Multi-config build. See artifacts for each target.
+        files: OpenWrt_firmware_*/*
 
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@main
@@ -151,8 +218,8 @@ jobs:
         keep_minimum_runs: 2
 
     - name: Remove old Releases
+      if: env.UPLOAD_RELEASE == 'true'
       uses: dev-drprasad/delete-older-releases@master
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         keep_latest: 3
         delete_tags: true
