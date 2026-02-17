@@ -11,7 +11,7 @@
 # See /LICENSE for more information.
 #
 
-# 安装 targets feed 中的 TARGET 包（若已启用 targets feed；列表失败或无 TARGET 时不报错退出）
+# 安装 targets feed 中的 TARGET 包（feed 提供 TARGET: 包即由此安装 target 定义）
 list_targets() { ./scripts/feeds list -r targets 2>/dev/null | awk '/^TARGET:/ {print $2}' || true; }
 for t in $(list_targets); do
   [ -n "$t" ] && ./scripts/feeds install -p targets -f "$t" || true
