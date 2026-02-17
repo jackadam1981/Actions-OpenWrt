@@ -1,14 +1,27 @@
 #!/bin/bash
+set -e
 #
 # https://github.com/P3TERX/Actions-OpenWrt
 # File name: diy-part2.sh
-# Description: OpenWrt DIY script part 2 (After Update feeds)
+# Description: OpenWrt DIY script part 2 (After Update feeds, 已加载 .config)
+# 在 Actions 中运行时：会安装 targets feed 的 TARGET，并应用 targets/<name>/target 与 etc 覆盖。
 #
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
 # This is free software, licensed under the MIT License.
 # See /LICENSE for more information.
 #
+
+# 安装 targets feed 中的 TARGET 包（若已启用 targets feed）
+for t in $(./scripts/feeds list -r targets 2>/dev/null | awk '/^TARGET:/ {print $2}' || true); do
+  [ -n "$t" ] && ./scripts/feeds install -p targets -f "$t" || true
+done
+
+# 应用当前 target 的 etc/ 覆盖（矩阵编译时 TARGET_NAME/TARGETS_DIR 由工作流传入；target 已由 feed 提供，无需 rsync）
+if [ -n "${TARGET_NAME}" ] && [ -n "${TARGETS_DIR}" ] && [ -n "${GITHUB_WORKSPACE}" ]; then
+  TD="${GITHUB_WORKSPACE}/${TARGETS_DIR}/${TARGET_NAME}"
+  [ -d "$TD/etc" ] && rsync -a "$TD/etc/" package/base-files/files/etc/
+fi
 
 # Modify default IP
 #sed -i 's/192.168.1.1/192.168.50.5/g' package/base-files/files/bin/config_generate

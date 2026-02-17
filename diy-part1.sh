@@ -14,5 +14,7 @@
 #sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
 
 # Add a feed source
-echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
-#echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+# echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
+# echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+# 自定义设备 targets feed（diy-part2.sh 会安装其中的 TARGET 包）
+echo 'src-git targets https://github.com/jackadam1981/openwrt-custom-devices.git' >>feeds.conf.default
