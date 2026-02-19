@@ -140,6 +140,11 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+   - run: |
+       cd openwrt
+       echo "=== TARGET ==="
+       grep '^CONFIG_TARGET' .config | head -10
+
     - name: Compile the firmware
       id: compile
       run: |
