@@ -211,7 +211,8 @@ jobs:
       id: tag
       run: echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
-    # Firmware: YYYYMMDD-<VERSION_NUMBER>-<rest> from version.buildinfo (e.g. 24.10.4), then strip openwrt-TARGET-SUBTARGET-.
+    # Firmware: strip openwrt-TARGET-SUBTARGET-, drop leading generic- if present, then prefix openwrt- on the remainder.
+    # Name: YYYYMMDD[-<version>]-openwrt-<rest>.bin (version from version.buildinfo when present).
     # Metadata / unknown patterns: <slug>_<basename>. Collisions get <slug>_ prefix.
     - name: Stage release assets
       if: env.UPLOAD_RELEASE == 'true'
@@ -235,6 +236,10 @@ jobs:
                 if [ -z "$short" ] || [ "$short" = "$bn" ]; then
                   out="${slug}_${bn}"
                 else
+                  case "$short" in
+                    generic-*) short="${short#generic-}" ;;
+                  esac
+                  short="openwrt-${short}"
                   if [ -n "$OWRT_VER" ]; then
                     out="${DAY}-${OWRT_VER}-${short}"
                   else
@@ -263,7 +268,7 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         body: |
-          Multi-config build. Firmware files: `YYYYMMDD-<OpenWrt version>-<image>.bin` (version from each target's `version.buildinfo`, e.g. 24.10.4; `openwrt-TARGET-SUBTARGET-` stripped from image name).
+          Multi-config build. Firmware files: `YYYYMMDD[-<OpenWrt version>]-openwrt-<profile...>.bin` (optional version from each target's `version.buildinfo`; strip `openwrt-TARGET-SUBTARGET-` and a leading `generic-`, then keep `openwrt-` prefix on the remainder).
           Metadata files stay as `<target>_<name>`. On name clash, `<target>_` is prepended.
         files: _release_assets/*
 
