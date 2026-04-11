@@ -211,8 +211,9 @@ jobs:
       id: tag
       run: echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
-    # Firmware: strip openwrt-TARGET-SUBTARGET-, drop leading generic- if present, then prefix openwrt- on the remainder.
-    # Name: YYYYMMDD[-<version>]-openwrt-<rest>.bin (version from version.buildinfo when present).
+    # Firmware prefix: last path segment of REPO_URL (e.g. openwrt/openwrt -> openwrt, immortalwrt/immortalwrt -> immortalwrt).
+    # Strip <prefix>-TARGET-SUBTARGET-, drop leading generic-, then prefix <prefix>- on the remainder.
+    # Name: YYYYMMDD[-<version>]-<prefix>-<rest>.bin (version from version.buildinfo when present).
     # Metadata / unknown patterns: <slug>_<basename>. Collisions get <slug>_ prefix.
     - name: Stage release assets
       if: env.UPLOAD_RELEASE == 'true'
@@ -221,6 +222,11 @@ jobs:
         rm -rf _release_assets
         mkdir -p _release_assets
         DAY=$(date -u +%Y%m%d)
+        repo_path="${REPO_URL%.git}"
+        FIRMWARE_PREFIX=$(echo "$repo_path" | sed -E 's#.*/##' | tr 'A-Z' 'a-z')
+        if [ -z "$FIRMWARE_PREFIX" ] || [[ ! "$FIRMWARE_PREFIX" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+          FIRMWARE_PREFIX=openwrt
+        fi
         for d in OpenWrt_firmware_*; do
           [ -d "$d" ] || continue
           slug="${d#OpenWrt_firmware_}"
@@ -232,14 +238,14 @@ jobs:
             bn=$(basename "$f")
             case "$bn" in
               *.bin|*.img.gz|*.tar.gz)
-                short=$(echo "$bn" | sed -E 's/^openwrt-[^-]+-[^-]+-//')
+                short=$(echo "$bn" | sed -E "s/^${FIRMWARE_PREFIX}-[^-]+-[^-]+-//")
                 if [ -z "$short" ] || [ "$short" = "$bn" ]; then
                   out="${slug}_${bn}"
                 else
                   case "$short" in
                     generic-*) short="${short#generic-}" ;;
                   esac
-                  short="openwrt-${short}"
+                  short="${FIRMWARE_PREFIX}-${short}"
                   if [ -n "$OWRT_VER" ]; then
                     out="${DAY}-${OWRT_VER}-${short}"
                   else
@@ -268,7 +274,7 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         body: |
-          Multi-config build. Firmware files: `YYYYMMDD[-<OpenWrt version>]-openwrt-<profile...>.bin` (optional version from each target's `version.buildinfo`; strip `openwrt-TARGET-SUBTARGET-` and a leading `generic-`, then keep `openwrt-` prefix on the remainder).
+          Multi-config build. Firmware files: `YYYYMMDD[-<version>]-<repo>-<profile...>.bin` (`<repo>` is the GitHub repo name from `REPO_URL`, e.g. `openwrt` or `immortalwrt`; optional version from each target's `version.buildinfo`; strip `<repo>-TARGET-SUBTARGET-` and a leading `generic-`, then keep `<repo>-` on the remainder).
           Metadata files stay as `<target>_<name>`. On name clash, `<target>_` is prepended.
         files: _release_assets/*
 
