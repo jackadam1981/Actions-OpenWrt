@@ -168,9 +168,7 @@ jobs:
           echo "status=failure" >> $GITHUB_OUTPUT
           exit 1
         fi
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' | head -5 || true
 
     - name: Check space usage
       if: (!cancelled())
@@ -180,7 +178,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
-        name: OpenWrt_bin_${{ env.CONFIG_SLUG }}${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        name: OpenWrt_bin_${{ env.CONFIG_SLUG }}
         path: openwrt/bin
 
     - name: Organize files
@@ -196,7 +194,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: OpenWrt_firmware_${{ env.CONFIG_SLUG }}${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        name: OpenWrt_firmware_${{ env.CONFIG_SLUG }}
         path: ${{ env.FIRMWARE }}
 
   release:
@@ -214,7 +212,7 @@ jobs:
       run: echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
     # Matrix artifacts each contain sha256sums, version.buildinfo, etc. — same basename
-    # collides on one GitHub Release. Prefix with target slug before upload.
+    # collides on one GitHub Release. Prefix with short target slug (CONFIG_SLUG only).
     - name: Stage release assets
       if: env.UPLOAD_RELEASE == 'true'
       run: |
@@ -225,7 +223,8 @@ jobs:
           [ -d "$d" ] || continue
           slug="${d#OpenWrt_firmware_}"
           find "$d" -type f -print0 | while IFS= read -r -d '' f; do
-            cp -f "$f" "_release_assets/${slug}__$(basename "$f")"
+            bn=$(basename "$f")
+            cp -f "$f" "_release_assets/${slug}_${bn}"
           done
         done
         ls -la _release_assets | head -50
@@ -237,7 +236,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body: Multi-config build. See artifacts for each target. Asset names are prefixed as `<target>__<filename>` when matrix builds overlap.
+        body: Multi-config build. Assets use `<target>_<original-filename>` (target = targets/* slug, e.g. hiker-x9, dir-505, x86-64).
         files: _release_assets/*
 
     - name: Delete workflow runs
