@@ -2,6 +2,12 @@
 # Hiker VirtualHere WiFi network configuration
 # Execute on first boot
 
+# Install banner / reset without owning paths in APK (base-files already ships them).
+mkdir -p /etc/rc.button
+cp -f /usr/share/hiker-x9-virtualhere-wifi/banner /etc/banner
+cp -f /usr/share/hiker-x9-virtualhere-wifi/reset /etc/rc.button/reset
+chmod +x /etc/rc.button/reset
+
 uci delete network.lan 2>/dev/null
 
 uci set network.LanBackup=interface

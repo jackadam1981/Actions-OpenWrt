@@ -63,3 +63,9 @@
 
 3. **本仓兜底（diy-part2.sh）**  
    若暂时无法改上游，可在本仓的 diy-part2 里对使用 APK 的 printserver 构建**强制选中 base-files**（见下），让 base-files 参与编译和 install，从而生成 `base-files.version`。
+
+---
+
+## 刷机与 bin 产物分析
+
+构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。

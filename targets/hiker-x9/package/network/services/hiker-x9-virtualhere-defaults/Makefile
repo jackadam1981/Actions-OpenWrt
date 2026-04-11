@@ -31,14 +31,12 @@ define Build/Compile
 endef
 
 define Package/hiker-x9-virtualhere-defaults/install
-	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_DATA) ./files/banner $(1)/etc/banner
+	$(INSTALL_DIR) $(1)/usr/share/hiker-x9-virtualhere
+	$(INSTALL_DATA) ./files/banner $(1)/usr/share/hiker-x9-virtualhere/banner
+	$(INSTALL_BIN) ./files/reset $(1)/usr/share/hiker-x9-virtualhere/reset
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/99-hiker-x9-virtualhere $(1)/etc/uci-defaults/99-hiker-x9-virtualhere
-
-	$(INSTALL_DIR) $(1)/etc/rc.button
-	$(INSTALL_BIN) ./files/reset $(1)/etc/rc.button/reset
 endef
 
 $(eval $(call BuildPackage,hiker-x9-virtualhere-defaults))
