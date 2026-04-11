@@ -1,0 +1,23 @@
+{$块擦除} 
+begin
+  if not SPIEnterProgMode(_SPI_SPEED_MAX) then LogPrint('Error setting SPI speed');
+
+  BlockSize := 65536;
+  sreg := 0;
+  ProgressBar(0, (_IC_SIZE / BlockSize)-1, 0);
+
+  for i:=0 to (_IC_SIZE / BlockSize)-1 do
+  begin
+    SPIWrite(1, 1, $06); 
+    SPIWrite(1, 4, $D8, i,0,0); 
+
+    repeat
+      SPIWrite(0, 1, $05);
+      SPIRead(1, 1, sreg);
+    until((sreg and 1) <> 1);
+    ProgressBar(1);
+  end;
+
+  ProgressBar(0, 0, 0);
+  SPIExitProgMode();
+end

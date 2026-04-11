@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings>
+  <detectopt AVRDet="1" MCUDet="0" KB90Det="0" MWActiveDet="0" I2CActiveDet="0" MWPassiveDet="1" I2CPassiveDet="1" EEPromActiveDet="0" EEPromPassiveDet="1"/>
+  <locale lang="CHS"/>
+  <options hw="usbasp" clear="1" skipff="1" unprot="1" verify="1" chipname="GD25Q64B" SPIExpert="1" ShowLinks="1" spi_speed="1_5Mhz" InitialDir="C:\Users\Administrator\Desktop\北极星光OPENWRT\固件文件\" blankcheck="1" LoadLastDev="1" SaveFhistory="1"/>
+  <Windows DPI="120" Top="345" Left="273" LogH="107" Width="1106" Height="609"/>
+  <ChipHistory list="GD25Q64B [3.3V],XM25QH64C [3.3V],XM25RH64C [3.3V],W25Q64xV [3.3V],GD25Q64x [3.3V],MX25L4006E [3.3V],XM25QU64C [1.8V],P25Q128L [1.8V],P25Q64H [3.3V],W25Q64FW [1.8V],W25N01GV [3.3V],W25N01KV [3.3V],F50L1G41LB [3.3V],W25Q128FV [3.3V],W25Q256FV [3.3V]"/>
+  <FileHistory file0="C:\Users\Administrator\Desktop\北极星光OPENWRT\固件文件\直接烧录编程器固件.bin" file1="C:\Users\Administrator\Desktop\北极星光OPENWRT\固件文件\breed-rt5350-blank.bin" file2="C:\Users\Administrator\Desktop\随身wifi原机备份型号KL.bin" file3="C:\Users\Administrator\Desktop\格行彩屏003可登录root编程器固件备份 - 副本.bin" file4="C:\Users\Administrator\Desktop\欧本彩屏2023版刷格行001固件（已修复不读esim问题.bin" file5="C:\Users\Administrator\Desktop\东方翼彩屏ASR wifi6带控换FLASH可改串.bin" file6="C:\Users\Administrator\Desktop\北极星光OPENWRT\breed-rt5350-blank.bin" file7="C:\Users\Administrator\Desktop\breed-rt5350-blank - 副本.bin" file8="C:\Users\Administrator\Desktop\breed-rt5350-blank.bin" file9="C:\Users\Administrator\Desktop\北极星光编程器固件\uboot-rt5350-evb-115200.bin"/>
+</settings>
