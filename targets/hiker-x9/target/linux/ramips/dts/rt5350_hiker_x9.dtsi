@@ -1,0 +1,159 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+
+#include "rt5350.dtsi"
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+	aliases {
+		led-boot = &led_r;
+		led-failsafe = &led_r;
+		led-running = &led_b;
+		led-upgrade = &led_r;
+		label-mac-device = &ethernet;
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 19 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+	};
+
+	gpio-export {
+		compatible = "gpio-export";
+		#size-cells = <0>;
+
+		mode_switch_usb {
+			gpio-export,name = "mode_usb";
+			gpio-export,input = <0>;
+			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		};
+
+		mode_switch_wan {
+			gpio-export,name = "mode_wan";
+			gpio-export,input = <0>;
+			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		};
+
+		mode_switch_3g {
+			gpio-export,name = "mode_3g";
+			gpio-export,input = <0>;
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+		};
+
+		root_hub {
+			gpio-export,name = "root_hub";
+			gpio-export,output = <1>;
+			gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_r: led_r {
+			label = "red:led_r";
+			function = LED_FUNCTION_STATUS;
+			color = <LED_COLOR_ID_RED>;
+			gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
+		};
+
+		led_b: led_b {
+			label = "blue:led_b";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&spi0 {
+	status = "okay";
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "u-boot";
+				reg = <0x0 0x30000>;
+				read-only;
+			};
+
+			partition@30000 {
+				label = "u-boot-env";
+				reg = <0x30000 0x10000>;
+				read-only;
+			};
+
+			partition@40000 {
+				label = "factory";
+				reg = <0x40000 0x10000>;
+				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x200>;
+					};
+
+					macaddr_factory_4: macaddr@4 {
+						compatible = "mac-base";
+						reg = <0x4 0x6>;
+						#nvmem-cell-cells = <1>;
+					};
+				};
+			};
+
+			partition@50000 {
+				compatible = "denx,uimage";
+				label = "firmware";
+				reg = <0x50000 0x7b0000>;
+			};
+		};
+	};
+};
+
+&state_default {
+	gpio {
+		groups = "i2c", "jtag", "uartf";
+		function = "gpio";
+	};
+};
+
+&ethernet {
+	nvmem-cells = <&macaddr_factory_4 0>;
+	nvmem-cell-names = "mac-address";
+};
+
+&esw {
+	mediatek,portmap = <0x2f>;
+};
+
+&wmac {
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
+};
+
+&ehci {
+	status = "okay";
+};
+
+&ohci {
+	status = "okay";
+};

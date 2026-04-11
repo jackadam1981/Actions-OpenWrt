@@ -1,0 +1,68 @@
+#!/bin/sh
+# Hiker VirtualHere network configuration
+# Execute on first boot
+
+uci delete network.lan 2>/dev/null
+
+uci set network.LanBackup=interface
+uci set network.LanBackup.proto=static
+uci set network.LanBackup.device=br-lan
+uci set network.LanBackup.ipaddr=192.168.100.1
+uci set network.LanBackup.netmask=255.255.255.0
+
+uci set network.LanUsb=interface
+uci set network.LanUsb.proto=dhcp
+uci set network.LanUsb.device=br-lan
+
+idx=0
+lan_zone_idx=""
+wan_zone_idx=""
+
+while uci get firewall.@zone[$idx] >/dev/null 2>&1; do
+    zone_name=$(uci get firewall.@zone[$idx].name 2>/dev/null)
+    if [ "$zone_name" = "lan" ] || [ "$zone_name" = "LAN" ]; then
+        lan_zone_idx=$idx
+    fi
+    if [ "$zone_name" = "wan" ] || [ "$zone_name" = "WAN" ]; then
+        wan_zone_idx=$idx
+    fi
+    idx=$((idx + 1))
+done
+
+if [ -n "$lan_zone_idx" ]; then
+    uci del firewall.@zone[$lan_zone_idx].network 2>/dev/null
+    uci add_list firewall.@zone[$lan_zone_idx].network=LanBackup 2>/dev/null
+    uci add_list firewall.@zone[$lan_zone_idx].network=LanUsb 2>/dev/null
+fi
+
+if [ -n "$wan_zone_idx" ]; then
+    uci del firewall.@zone[$wan_zone_idx].network 2>/dev/null
+    uci add_list firewall.@zone[$wan_zone_idx].network=wan 2>/dev/null
+    uci add_list firewall.@zone[$wan_zone_idx].network=wan6 2>/dev/null
+fi
+
+uci set system.@system[0].hostname=HikerVirtualHere 2>/dev/null
+uci set system.@system[0].zonename=Asia/Shanghai 2>/dev/null
+uci set system.@system[0].timezone=CST-8 2>/dev/null
+
+if [ -f /etc/config/virtualhere-usb-server ]; then
+    uci set virtualhere-usb-server.server.enabled=1 2>/dev/null
+    uci commit virtualhere-usb-server 2>/dev/null
+fi
+
+led_exists=$(uci show system 2>/dev/null | grep "\.name='led_r'" | cut -d'=' -f1 | cut -d'.' -f1-2 | head -1)
+if [ -z "$led_exists" ]; then
+    uci add system led >/dev/null 2>&1
+    uci set system.@led[-1].name=led_r 2>/dev/null
+    uci set system.@led[-1].sysfs=red:led_r 2>/dev/null
+    uci set system.@led[-1].trigger=netdev 2>/dev/null
+    uci set system.@led[-1].dev=br-lan 2>/dev/null
+    uci add_list system.@led[-1].mode=tx 2>/dev/null
+    uci add_list system.@led[-1].mode=rx 2>/dev/null
+fi
+
+uci commit network 2>/dev/null
+uci commit firewall 2>/dev/null
+uci commit system 2>/dev/null
+
+exit 0
