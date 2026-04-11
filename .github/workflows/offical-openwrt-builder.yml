@@ -211,23 +211,41 @@ jobs:
       id: tag
       run: echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
-    # Matrix artifacts each contain sha256sums, version.buildinfo, etc. — same basename
-    # collides on one GitHub Release. Prefix with short target slug (CONFIG_SLUG only).
+    # Firmware: YYYYMMDD-<rest> after stripping openwrt-<target>-<subtarget>- (shorter names).
+    # Metadata / unknown patterns: <slug>_<basename>. Collisions get <slug>_ prefix.
     - name: Stage release assets
       if: env.UPLOAD_RELEASE == 'true'
       run: |
         set -euo pipefail
         rm -rf _release_assets
         mkdir -p _release_assets
+        DAY=$(date -u +%Y%m%d)
         for d in OpenWrt_firmware_*; do
           [ -d "$d" ] || continue
           slug="${d#OpenWrt_firmware_}"
           find "$d" -type f -print0 | while IFS= read -r -d '' f; do
             bn=$(basename "$f")
-            cp -f "$f" "_release_assets/${slug}_${bn}"
+            case "$bn" in
+              *.bin|*.img.gz|*.tar.gz)
+                short=$(echo "$bn" | sed -E 's/^openwrt-[^-]+-[^-]+-//')
+                if [ -z "$short" ] || [ "$short" = "$bn" ]; then
+                  out="${slug}_${bn}"
+                else
+                  out="${DAY}-${short}"
+                fi
+                ;;
+              *)
+                out="${slug}_${bn}"
+                ;;
+            esac
+            dest="_release_assets/$out"
+            if [ -e "$dest" ]; then
+              dest="_release_assets/${slug}_${out}"
+            fi
+            cp -f "$f" "$dest"
           done
         done
-        ls -la _release_assets | head -50
+        ls -la _release_assets | head -80
 
     - name: Upload firmware to release
       if: env.UPLOAD_RELEASE == 'true'
@@ -236,7 +254,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body: Multi-config build. Assets use `<target>_<original-filename>` (target = targets/* slug, e.g. hiker-x9, dir-505, x86-64).
+        body: |
+          Multi-config build. Firmware files are named `YYYYMMDD-<image>.bin` (OpenWrt `openwrt-TARGET-SUBTARGET-` prefix stripped).
+          Metadata files stay as `<target>_<name>`. On name clash, `<target>_` is prepended.
         files: _release_assets/*
 
     - name: Delete workflow runs
