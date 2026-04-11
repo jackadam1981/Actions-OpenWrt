@@ -55,3 +55,19 @@ define Device/hiker_x9-virtualhere
 		kmod-usb-core kmod-usb-ohci kmod-usb2
 endef
 TARGET_DEVICES += hiker_x9-virtualhere
+
+define Device/hiker_x9-virtualhere-wifi
+	$(call Device/hiker_hiker-common)
+	DEVICE_MODEL := Hiker X9 VirtualHere WiFi
+	DEVICE_DTS := rt5350_hiker_x9-virtualhere-wifi
+	SUPPORTED_DEVICES := hiker,x9-virtualhere-wifi hiker,x9 HIKER
+	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
+		luci-i18n-base-zh-cn \
+		virtualhere-usb-server \
+		hiker-x9-virtualhere-wifi-defaults \
+		kmod-usb-core kmod-usb-ohci kmod-usb2 \
+		kmod-mac80211 kmod-rt2800-lib kmod-rt2800-mmio kmod-rt2800-soc \
+		kmod-rt2x00-lib kmod-rt2x00-mmio \
+		wpad-mbedtls iw iwinfo
+endef
+TARGET_DEVICES += hiker_x9-virtualhere-wifi
