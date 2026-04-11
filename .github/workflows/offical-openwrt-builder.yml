@@ -211,7 +211,7 @@ jobs:
       id: tag
       run: echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
-    # Firmware: YYYYMMDD-<rest> after stripping openwrt-<target>-<subtarget>- (shorter names).
+    # Firmware: YYYYMMDD-<VERSION_NUMBER>-<rest> from version.buildinfo (e.g. 24.10.4), then strip openwrt-TARGET-SUBTARGET-.
     # Metadata / unknown patterns: <slug>_<basename>. Collisions get <slug>_ prefix.
     - name: Stage release assets
       if: env.UPLOAD_RELEASE == 'true'
@@ -223,6 +223,10 @@ jobs:
         for d in OpenWrt_firmware_*; do
           [ -d "$d" ] || continue
           slug="${d#OpenWrt_firmware_}"
+          OWRT_VER=""
+          if [ -f "$d/version.buildinfo" ]; then
+            OWRT_VER=$(head -1 "$d/version.buildinfo" | cut -d, -f1 | awk '{print $1}' | tr -cd '0-9a-zA-Z._~-')
+          fi
           find "$d" -type f -print0 | while IFS= read -r -d '' f; do
             bn=$(basename "$f")
             case "$bn" in
@@ -231,7 +235,11 @@ jobs:
                 if [ -z "$short" ] || [ "$short" = "$bn" ]; then
                   out="${slug}_${bn}"
                 else
-                  out="${DAY}-${short}"
+                  if [ -n "$OWRT_VER" ]; then
+                    out="${DAY}-${OWRT_VER}-${short}"
+                  else
+                    out="${DAY}-${short}"
+                  fi
                 fi
                 ;;
               *)
@@ -255,7 +263,7 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         body: |
-          Multi-config build. Firmware files are named `YYYYMMDD-<image>.bin` (OpenWrt `openwrt-TARGET-SUBTARGET-` prefix stripped).
+          Multi-config build. Firmware files: `YYYYMMDD-<OpenWrt version>-<image>.bin` (version from each target's `version.buildinfo`, e.g. 24.10.4; `openwrt-TARGET-SUBTARGET-` stripped from image name).
           Metadata files stay as `<target>_<name>`. On name clash, `<target>_` is prepended.
         files: _release_assets/*
 
