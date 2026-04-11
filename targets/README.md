@@ -6,6 +6,7 @@
 
 - **targets/<name>/.config** — 必选，该目标的 OpenWrt 编译配置。
 - **targets/<name>/target/** — 可选，覆盖到 OpenWrt 源码的 `target/`（如上游不支持的型号可放 `target/linux/*` 等）。
+- **targets/<name>/package/** — 可选，覆盖到 OpenWrt 源码的 `package/`（适合补充自定义包或专有二进制封装）。
 - **targets/<name>/etc/** — 可选，覆盖到 `package/base-files/files/etc/`（固件内 `/etc` 默认文件）。
 
 ## 示例
@@ -18,18 +19,23 @@
 1. 新建目录 `targets/<目标名>/`。
 2. 放入 `targets/<目标名>/.config`。
 3. 如需自定义内核/设备树等，在 `targets/<目标名>/target/` 下按 OpenWrt 源码结构放置（如 `target/linux/mediatek/...`）。
-4. 如需该型号默认的 `/etc` 文件，在 `targets/<目标名>/etc/` 下放置，会合并到 `package/base-files/files/etc/`。
+4. 如需自定义 package（例如打包专有静态二进制、附带 init 脚本），可放在 `targets/<目标名>/package/` 下。
+5. 如需该型号默认的 `/etc` 文件，在 `targets/<目标名>/etc/` 下放置，会合并到 `package/base-files/files/etc/`。
 
 ---
 
-## printserver 与 openwrt-custom-devices
+## hiker-x9 与 openwrt-custom-devices
 
-设计上使用 **printserver** 作为一类 target（`CONFIG_TARGET_printserver`），下面可挂多种设备：例如 **hikerx9**、也可以再写一份 **dir-505** 等。和原来已有的 ramips 设备（如 `targets/dir-505` 用 `CONFIG_TARGET_ath79_...`）并存：前者是传统 target，后者是 printserver target 下的设备。
+当前 hiker-x9 采用 **ramips / rt305x + 设备 overlay** 的方式扩展，不再依赖单独的 `printserver` target。仓库会在构建时把 `targets/hiker-x9/target/linux/ramips/**` 合并进 OpenWrt 源码树，并把额外的 `hiker.mk` 接入 `rt305x.mk`。
 
-- **targets/hiker-x9/.config**：`CONFIG_TARGET_printserver=y`、`CONFIG_TARGET_printserver_hikerx9=y`、`CONFIG_TARGET_MULTI_PROFILE=y`。
-- 若要在 printserver 下增加 dir-505：在 openwrt-custom-devices 里增加 printserver 的 dir-505 设备定义，在本仓增加 `targets/dir-505-printserver/.config`（或同名目录），选 `CONFIG_TARGET_printserver_dir505` 等对应选项即可。
+- **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、`CONFIG_TARGET_MULTI_PROFILE=y`，默认同时编译：
+  - `hiker_x9-minimal`
+  - `hiker_x9-p910nd`
+  - `hiker_x9-full`
+  - `hiker_x9-virtualhere`
+- 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
 
-**仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 以 feed 形式加入，target 由 `feeds install -p targets -f` 安装。
+**仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 仍会作为 feed 加入，可继续复用其中已有的设备思路；但本仓已经支持在 `targets/hiker-x9/` 下直接维护本地 overlay 和自定义 package（例如 `virtualhere-usb-server`）。
 
 ---
 

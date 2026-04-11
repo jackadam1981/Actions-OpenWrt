@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+
+START=95
+STOP=10
+
+PROG=/usr/sbin/virtualhere-usb-server
+CONF=/etc/virtualhere/config.ini
+PIDFILE=/var/run/virtualhere-usb-server.pid
+
+start() {
+	[ -x "$PROG" ] || return 1
+	mkdir -p /var/run /etc/virtualhere
+
+	start-stop-daemon -S -m -p "$PIDFILE" -x "$PROG" -- -b -c "$CONF"
+}
+
+stop() {
+	start-stop-daemon -K -p "$PIDFILE" -x "$PROG"
+	rm -f "$PIDFILE"
+}

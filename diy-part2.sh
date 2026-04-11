@@ -3,7 +3,7 @@
 # https://github.com/P3TERX/Actions-OpenWrt
 # File name: diy-part2.sh
 # Description: OpenWrt DIY script part 2 (After Update feeds, 已加载 .config)
-# 在 Actions 中运行时：会安装 targets feed 的 TARGET，并应用 targets/<name>/etc 覆盖。
+# 在 Actions 中运行时：会安装 targets feed 的 TARGET，并应用 targets/<name> 下的自定义覆盖。
 #
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
@@ -17,12 +17,25 @@ for t in $(list_targets); do
   [ -n "$t" ] && ./scripts/feeds install -p targets -f "$t" || true
 done
 
-# 应用当前 target 的 etc/ 覆盖（矩阵编译时 TARGET_NAME/TARGETS_DIR 由工作流传入）
+# 应用当前 target 的 target/、package/、etc/ 覆盖（矩阵编译时 TARGET_NAME/TARGETS_DIR 由工作流传入）
 if [ -n "${TARGET_NAME}" ] && [ -n "${TARGETS_DIR}" ] && [ -n "${GITHUB_WORKSPACE}" ]; then
   TD="${GITHUB_WORKSPACE}/${TARGETS_DIR}/${TARGET_NAME}"
+  if [ -d "$TD/target" ]; then
+    rsync -a "$TD/target/" target/
+  fi
+  if [ -d "$TD/package" ]; then
+    rsync -a "$TD/package/" package/
+  fi
   if [ -d "$TD/etc" ]; then
     mkdir -p package/base-files/files/etc
     rsync -a "$TD/etc/" package/base-files/files/etc/
+  fi
+
+  # 某些设备通过额外的 image/*.mk 扩展 profile，需要显式接到子 target 定义中。
+  if [ -f target/linux/ramips/image/hiker.mk ] && [ -f target/linux/ramips/image/rt305x.mk ]; then
+    if ! grep -q 'target/linux/ramips/image/hiker.mk' target/linux/ramips/image/rt305x.mk; then
+      printf '\ninclude $(TOPDIR)/target/linux/ramips/image/hiker.mk\n' >> target/linux/ramips/image/rt305x.mk
+    fi
   fi
 fi
 
