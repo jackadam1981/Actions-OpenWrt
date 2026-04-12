@@ -156,8 +156,10 @@ jobs:
 
     - run: |
        cd openwrt
-       echo "=== TARGET ==="
-       grep '^CONFIG_TARGET' .config | head -10
+       echo "=== CONFIG_TARGET_MULTI_PROFILE & all DEVICE_* (after make defconfig) ==="
+       grep -E '^CONFIG_TARGET_MULTI_PROFILE=|^CONFIG_TARGET_.*_DEVICE_.*=' .config || true
+       echo "=== CONFIG_TARGET summary (first 25 lines) ==="
+       grep '^CONFIG_TARGET' .config | head -25
 
     - name: Compile the firmware
       id: compile
