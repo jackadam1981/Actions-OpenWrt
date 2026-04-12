@@ -33,7 +33,7 @@ define Device/hiker_x9-full
 	DEVICE_MODEL := Hiker X9 Full
 	DEVICE_DTS := rt5350_hiker_x9-full-wifi
 	SUPPORTED_DEVICES := hiker,x9-full hiker,x9 HIKER
-	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
+	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
@@ -61,7 +61,7 @@ define Device/hiker_x9-virtualhere-wifi
 	DEVICE_MODEL := Hiker X9 VirtualHere WiFi
 	DEVICE_DTS := rt5350_hiker_x9-virtualhere-wifi
 	SUPPORTED_DEVICES := hiker,x9-virtualhere-wifi hiker,x9 HIKER
-	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
+	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
 		virtualhere-usb-server \
 		hiker-x9-virtualhere-wifi-defaults \
