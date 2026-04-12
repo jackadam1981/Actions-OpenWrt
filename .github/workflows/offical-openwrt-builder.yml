@@ -27,8 +27,10 @@ on:
       - Source Code Update
   workflow_dispatch:
 
+# contents: release/tags; actions: required by Mattraks/delete-workflow-runs (delete workflow runs API).
 permissions:
   contents: write
+  actions: write
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
@@ -279,8 +281,10 @@ jobs:
         files: _release_assets/*
 
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@main
+      uses: Mattraks/delete-workflow-runs@v2
       with:
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
         retain_days: 0
         keep_minimum_runs: 2
 

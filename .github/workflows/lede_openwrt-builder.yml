@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
@@ -152,8 +153,10 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
 
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@main
+      uses: Mattraks/delete-workflow-runs@v2
       with:
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
         retain_days: 0
         keep_minimum_runs: 2
 
