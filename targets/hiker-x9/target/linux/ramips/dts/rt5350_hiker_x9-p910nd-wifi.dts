@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+
+#include "rt5350_hiker_x9.dtsi"
+
+/*
+ * Print + Wi-Fi profile, sharing the same hardware description.
+ */
+/ {
+	compatible = "hiker,x9-p910nd-wifi", "hiker,x9", "ralink,rt5350-soc";
+	model = "Hiker X9 Print WiFi";
+};
+

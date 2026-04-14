@@ -28,11 +28,11 @@ define Device/hiker_x9-p910nd
 endef
 TARGET_DEVICES += hiker_x9-p910nd
 
-define Device/hiker_x9-full
+define Device/hiker_x9-p910nd-wifi
 	$(call Device/hiker_hiker-common)
-	DEVICE_MODEL := Hiker X9 Full
-	DEVICE_DTS := rt5350_hiker_x9-full-wifi
-	SUPPORTED_DEVICES := hiker,x9-full hiker,x9 HIKER
+	DEVICE_MODEL := Hiker X9 Print WiFi
+	DEVICE_DTS := rt5350_hiker_x9-p910nd-wifi
+	SUPPORTED_DEVICES := hiker,x9-p910nd-wifi hiker,x9 HIKER
 	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
@@ -41,7 +41,7 @@ define Device/hiker_x9-full
 		kmod-rt2x00-lib kmod-rt2x00-mmio \
 		wpad-mbedtls iw iwinfo
 endef
-TARGET_DEVICES += hiker_x9-full
+TARGET_DEVICES += hiker_x9-p910nd-wifi
 
 define Device/hiker_x9-virtualhere
 	$(call Device/hiker_hiker-common)

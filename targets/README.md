@@ -31,7 +31,7 @@
 - **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、**`CONFIG_TARGET_MULTI_PROFILE=y`**、**`CONFIG_TARGET_PER_DEVICE_ROOTFS=y`**，以及多个 **`CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y`**（注意是 **`TARGET_DEVICE_…`** 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
   - `hiker_x9-minimal`
   - `hiker_x9-p910nd`
-  - `hiker_x9-full`
+  - `hiker_x9-p910nd-wifi`
   - `hiker_x9-virtualhere`
   - `hiker_x9-virtualhere-wifi`
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。

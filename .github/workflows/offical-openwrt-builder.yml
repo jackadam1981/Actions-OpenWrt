@@ -217,7 +217,7 @@ jobs:
 
     # Firmware prefix: last path segment of REPO_URL (e.g. openwrt/openwrt -> openwrt, immortalwrt/immortalwrt -> immortalwrt).
     # Strip <prefix>-TARGET-SUBTARGET-, drop leading generic-, then prefix <prefix>- on the remainder.
-    # Name: YYYYMMDD[-<version>]-<prefix>-<rest>.bin (version from version.buildinfo when present).
+    # Name: YYYYMMDD-<prefix>-<rest>.bin (no version in filename).
     # Metadata / unknown patterns: <slug>_<basename>. Collisions get <slug>_ prefix.
     - name: Stage release assets
       if: env.UPLOAD_RELEASE == 'true'
@@ -234,10 +234,6 @@ jobs:
         for d in OpenWrt_firmware_*; do
           [ -d "$d" ] || continue
           slug="${d#OpenWrt_firmware_}"
-          OWRT_VER=""
-          if [ -f "$d/version.buildinfo" ]; then
-            OWRT_VER=$(head -1 "$d/version.buildinfo" | cut -d, -f1 | awk '{print $1}' | tr -cd '0-9a-zA-Z._~-')
-          fi
           find "$d" -type f -print0 | while IFS= read -r -d '' f; do
             bn=$(basename "$f")
             case "$bn" in
@@ -250,11 +246,7 @@ jobs:
                     generic-*) short="${short#generic-}" ;;
                   esac
                   short="${FIRMWARE_PREFIX}-${short}"
-                  if [ -n "$OWRT_VER" ]; then
-                    out="${DAY}-${OWRT_VER}-${short}"
-                  else
-                    out="${DAY}-${short}"
-                  fi
+                  out="${DAY}-${short}"
                 fi
                 ;;
               *)
