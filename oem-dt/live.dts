@@ -1,0 +1,408 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <0x01>;
+	model = "Hiker";
+	compatible = "HIKER\0ralink,rt5350-soc";
+	#size-cells = <0x01>;
+
+	chosen {
+		bootargs = "console=ttyS0,57600";
+	};
+
+	gpio-keys-polled {
+		poll-interval = <0x14>;
+		#address-cells = <0x01>;
+		compatible = "gpio-keys-polled";
+		#size-cells = <0x00>;
+
+		3g {
+			linux,code = <0x102>;
+			gpios = <0x0d 0x0e 0x00>;
+			label = "button 3g";
+		};
+
+		wan {
+			linux,code = <0x101>;
+			gpios = <0x0d 0x0b 0x00>;
+			label = "button wan";
+		};
+
+		reset {
+			linux,code = <0x198>;
+			gpios = <0x0d 0x13 0x01>;
+			label = "reset";
+		};
+
+		usb {
+			linux,code = <0x100>;
+			gpios = <0x0d 0x01 0x00>;
+			label = "button usb";
+		};
+	};
+
+	gpio_export {
+		compatible = "gpio-export";
+		#size-cells = <0x00>;
+
+		root_hub {
+			gpio-export,name = "root_hub";
+			gpios = <0x0d 0x0c 0x00>;
+			gpio-export,output = <0x01>;
+		};
+	};
+
+	wmac@10180000 {
+		reg = <0x10180000 0x40000>;
+		ralink,led-polarity = <0x01>;
+		interrupt-parent = <0x03>;
+		ralink,mtd-eeprom = <0x0b 0x00>;
+		ralink,eeprom = "soc_wmac.eeprom";
+		compatible = "ralink,rt5350-wmac\0ralink,rt2880-wmac";
+		interrupts = <0x06>;
+	};
+
+	rstctrl {
+		phandle = <0x02>;
+		linux,phandle = <0x02>;
+		compatible = "ralink,rt5350-reset\0ralink,rt2880-reset";
+		#reset-cells = <0x01>;
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		led_b {
+			gpios = <0x0d 0x12 0x01>;
+			label = "hiker:blue:led_b";
+		};
+
+		led_r {
+			gpios = <0x0d 0x11 0x01>;
+			label = "hiker:red:led_r";
+		};
+	};
+
+	ehci@101c0000 {
+		phys = <0x0c 0x01>;
+		reg = <0x101c0000 0x1000>;
+		status = "okay";
+		phy-names = "usb";
+		interrupt-parent = <0x01>;
+		compatible = "ralink,rt3xxx-ehci\0ehci-platform";
+		interrupts = <0x12>;
+	};
+
+	pinctrl {
+		pinctrl-0 = <0x09>;
+		compatible = "ralink,rt2880-pinmux";
+		pinctrl-names = "default";
+
+		spi1 {
+			phandle = <0x07>;
+			linux,phandle = <0x07>;
+
+			spi1 {
+				ralink,group = "spi_cs1";
+				ralink,function = "spi_cs1";
+			};
+		};
+
+		phy_led {
+
+			phy_led {
+				ralink,group = "led";
+				ralink,function = "led";
+			};
+		};
+
+		pinctrl0 {
+			phandle = <0x09>;
+			linux,phandle = <0x09>;
+
+			gpio {
+				ralink,group = "i2c\0jtag\0uartf";
+				ralink,function = "gpio";
+			};
+		};
+
+		i2c {
+			phandle = <0x05>;
+			linux,phandle = <0x05>;
+
+			i2c {
+				ralink,group = "i2c";
+				ralink,function = "i2c";
+			};
+		};
+
+		uartf {
+			phandle = <0x04>;
+			linux,phandle = <0x04>;
+
+			uartf {
+				ralink,group = "uartf";
+				ralink,function = "uartf";
+			};
+		};
+
+		uartlite {
+			phandle = <0x08>;
+			linux,phandle = <0x08>;
+
+			uart {
+				ralink,group = "uartlite";
+				ralink,function = "uartlite";
+			};
+		};
+
+		spi {
+			phandle = <0x06>;
+			linux,phandle = <0x06>;
+
+			spi {
+				ralink,group = "spi";
+				ralink,function = "spi";
+			};
+		};
+	};
+
+	palmbus@10000000 {
+		reg = <0x10000000 0x200000>;
+		#address-cells = <0x01>;
+		ranges = <0x00 0x10000000 0x1fffff>;
+		compatible = "palmbus";
+		#size-cells = <0x01>;
+
+		systick@d00 {
+			reg = <0xd00 0x10>;
+			interrupt-parent = <0x03>;
+			compatible = "ralink,rt5350-systick\0ralink,cevt-systick";
+			interrupts = <0x07>;
+		};
+
+		sysc@0 {
+			reg = <0x00 0x100>;
+			compatible = "ralink,rt5350-sysc\0ralink,rt3050-sysc";
+		};
+
+		spi@b00 {
+			resets = <0x02 0x12>;
+			reg = <0xb00 0x100>;
+			#address-cells = <0x01>;
+			pinctrl-0 = <0x06 0x07>;
+			status = "okay";
+			compatible = "ralink,rt5350-spi";
+			#size-cells = <0x01>;
+			pinctrl-names = "default";
+			reset-names = "spi";
+
+			m25p80@0 {
+				reg = <0x00 0x00>;
+				#address-cells = <0x01>;
+				spi-max-frequency = <0x989680>;
+				#compatible = "mx25l6405d";
+				linux,modalias = "m25p80\0w25q128";
+				compatible = "w25q128";
+				#size-cells = <0x01>;
+
+				partition@50000 {
+					reg = <0x50000 0x7b0000>;
+					label = "firmware";
+				};
+
+				partition@40000 {
+					reg = <0x40000 0x10000>;
+					phandle = <0x0b>;
+					linux,phandle = <0x0b>;
+					label = "factory";
+				};
+
+				partition@0 {
+					reg = <0x00 0x30000>;
+					label = "u-boot";
+				};
+
+				partition@30000 {
+					reg = <0x30000 0x10000>;
+					label = "u-boot-env";
+				};
+			};
+		};
+
+		gpio@600 {
+			resets = <0x02 0x0d>;
+			reg = <0x600 0x34>;
+			#gpio-cells = <0x02>;
+			phandle = <0x0d>;
+			ralink,register-map = [00 04 08 0c 20 24 28 2c 30 34];
+			linux,phandle = <0x0d>;
+			interrupt-parent = <0x01>;
+			gpio-controller;
+			ralink,num-gpios = <0x16>;
+			compatible = "ralink,rt5350-gpio\0ralink,rt2880-gpio";
+			interrupts = <0x06>;
+			ralink,gpio-base = <0x00>;
+			reset-names = "pio";
+		};
+
+		gpio@660 {
+			reg = <0x660 0x24>;
+			#gpio-cells = <0x02>;
+			ralink,register-map = [00 04 08 0c 10 14 18 1c 20 24];
+			status = "disabled";
+			interrupt-parent = <0x01>;
+			gpio-controller;
+			ralink,num-gpios = <0x06>;
+			compatible = "ralink,rt5350-gpio\0ralink,rt2880-gpio";
+			interrupts = <0x06>;
+			ralink,gpio-base = <0x16>;
+		};
+
+		watchdog@120 {
+			resets = <0x02 0x08>;
+			reg = <0x120 0x10>;
+			interrupt-parent = <0x01>;
+			compatible = "ralink,rt5350-wdt\0ralink,rt2880-wdt";
+			interrupts = <0x01>;
+			reset-names = "wdt";
+		};
+
+		uartlite@c00 {
+			resets = <0x02 0x13>;
+			reg-shift = <0x02>;
+			reg = <0xc00 0x100>;
+			pinctrl-0 = <0x08>;
+			interrupt-parent = <0x01>;
+			compatible = "ralink,rt5350-uart\0ralink,rt2880-uart\0ns16550a";
+			interrupts = <0x0c>;
+			pinctrl-names = "default";
+			reset-names = "uartl";
+		};
+
+		timer@100 {
+			reg = <0x100 0x20>;
+			interrupt-parent = <0x01>;
+			compatible = "ralink,rt5350-timer\0ralink,rt2880-timer";
+			interrupts = <0x01>;
+		};
+
+		intc@200 {
+			resets = <0x02 0x13>;
+			reg = <0x200 0x100>;
+			phandle = <0x01>;
+			#interrupt-cells = <0x01>;
+			linux,phandle = <0x01>;
+			interrupt-parent = <0x03>;
+			interrupt-controller;
+			compatible = "ralink,rt5350-intc\0ralink,rt2880-intc";
+			interrupts = <0x02>;
+			reset-names = "intc";
+		};
+
+		memc@300 {
+			resets = <0x02 0x14>;
+			reg = <0x300 0x100>;
+			interrupt-parent = <0x01>;
+			compatible = "ralink,rt5350-memc\0ralink,rt3050-memc";
+			interrupts = <0x03>;
+			reset-names = "mc";
+		};
+
+		gdma@2800 {
+			resets = <0x02 0x0e>;
+			reg = <0x2800 0x800>;
+			#dma-requests = <0x10>;
+			#dma-cells = <0x01>;
+			status = "disabled";
+			interrupt-parent = <0x01>;
+			compatible = "ralink,rt3883-gdma";
+			interrupts = <0x07>;
+			reset-names = "dma";
+			#dma-channels = <0x10>;
+		};
+
+		uart@500 {
+			resets = <0x02 0x0c>;
+			reg-shift = <0x02>;
+			reg = <0x500 0x100>;
+			pinctrl-0 = <0x04>;
+			status = "disabled";
+			interrupt-parent = <0x01>;
+			compatible = "ralink,rt5350-uart\0ralink,rt2880-uart\0ns16550a";
+			interrupts = <0x05>;
+			pinctrl-names = "default";
+			reset-names = "uart";
+		};
+
+		i2c@900 {
+			resets = <0x02 0x10>;
+			reg = <0x900 0x100>;
+			#address-cells = <0x01>;
+			pinctrl-0 = <0x05>;
+			status = "disabled";
+			compatible = "ralink,rt2880-i2c";
+			#size-cells = <0x00>;
+			pinctrl-names = "default";
+			reset-names = "i2c";
+		};
+	};
+
+	ethernet@10100000 {
+		resets = <0x02 0x15 0x02 0x17>;
+		reg = <0x10100000 0x10000>;
+		mtd-mac-address = <0x0b 0x04>;
+		interrupt-parent = <0x03>;
+		mediatek,switch = <0x0a>;
+		compatible = "ralink,rt5350-eth\0ralink,rt3050-eth";
+		interrupts = <0x05>;
+		reset-names = "fe\0esw";
+	};
+
+	cpuintc@0 {
+		#address-cells = <0x00>;
+		phandle = <0x03>;
+		#interrupt-cells = <0x01>;
+		linux,phandle = <0x03>;
+		interrupt-controller;
+		compatible = "mti,cpu-interrupt-controller";
+	};
+
+	cpus {
+
+		cpu@0 {
+			compatible = "mips,mips24KEc";
+		};
+	};
+
+	usbphy {
+		resets = <0x02 0x16 0x02 0x19>;
+		phandle = <0x0c>;
+		linux,phandle = <0x0c>;
+		#phy-cells = <0x01>;
+		compatible = "ralink,rt3xxx-usbphy";
+		reset-names = "host\0device";
+	};
+
+	ohci@101c1000 {
+		phys = <0x0c 0x01>;
+		reg = <0x101c1000 0x1000>;
+		status = "okay";
+		phy-names = "usb";
+		interrupt-parent = <0x01>;
+		compatible = "ralink,rt3xxx-ohci\0ohci-platform";
+		interrupts = <0x12>;
+	};
+
+	esw@10110000 {
+		mediatek,portmap = <0x2f>;
+		resets = <0x02 0x18>;
+		reg = <0x10110000 0x8000>;
+		phandle = <0x0a>;
+		linux,phandle = <0x0a>;
+		interrupt-parent = <0x01>;
+		compatible = "ralink,rt5350-esw\0ralink,rt3050-esw";
+		interrupts = <0x11>;
+		reset-names = "ephy";
+	};
+};

@@ -1,0 +1,40 @@
+[1] uname:
+Linux Hiker 3.18.140 #11 Thu Sep 25 07:42:55 CST 2025 mips GNU/Linux
+[2] dropbear:
+Dropbear v2017.75
+[3] sysinfo:
+drwxr-xr-x    2 root     root            80 Jan  1  1970 .
+drwxrwxrwt   17 root     root           500 Sep 25 08:00 ..
+-rw-r--r--    1 root     root             6 Jan  1  1970 board_name
+-rw-r--r--    1 root     root             6 Jan  1  1970 model
+hiker
+Hiker
+[4] mtd:
+dev:    size   erasesize  name
+mtd0: 00030000 00010000 "u-boot"
+mtd1: 00010000 00010000 "u-boot-env"
+mtd2: 00010000 00010000 "factory"
+mtd3: 007b0000 00010000 "firmware"
+mtd4: 00120669 00010000 "kernel"
+mtd5: 0068f997 00010000 "rootfs"
+mtd6: 00130000 00010000 "rootfs_data"
+[5] device-tree path:
+/proc/device-tree
+[6] compatible:
+HIKER
+ralink,rt5350-soc
+[7] model:
+Hiker
+[8] upgrade dir:
+drwxrwxr-x    3 root     root           142 Sep 25 07:27 .
+drwxr-xr-x   13 root     root           819 Sep 25 07:24 ..
+-rwxrwxr-x    1 root     root          6435 Sep 25 07:23 common.sh
+-rwxrwxr-x    1 root     root           451 Sep 25 07:23 do_stage2
+-rwxrwxr-x    1 root     root           752 Sep 25 07:23 fwtool.sh
+drwxr-xr-x    2 root     root           118 Sep 25 07:27 keep.d
+-rw-rw-r--    1 root     root           360 Sep 24 20:05 luci-add-conffiles.sh
+-rwxrwxr-x    1 root     root          3665 Sep 25 07:23 platform.sh
+-rwxrwxr-x    1 root     root          3102 Sep 25 07:23 stage2
+[9] dtc:
+no-dtc
+wrote /tmp/dt_export.tgz

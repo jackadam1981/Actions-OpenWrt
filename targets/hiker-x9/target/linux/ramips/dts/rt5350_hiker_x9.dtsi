@@ -15,8 +15,27 @@
 		label-mac-device = &ethernet;
 	};
 
-	keys {
-		compatible = "gpio-keys";
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		poll-interval = <20>;
+
+		usb {
+			label = "button usb";
+			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+			linux,code = <0x100>;
+		};
+
+		wan {
+			label = "button wan";
+			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+			linux,code = <0x101>;
+		};
+
+		3g {
+			label = "button 3g";
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+			linux,code = <0x102>;
+		};
 
 		reset {
 			label = "reset";
@@ -28,24 +47,6 @@
 	gpio-export {
 		compatible = "gpio-export";
 		#size-cells = <0>;
-
-		mode_switch_usb {
-			gpio-export,name = "mode_usb";
-			gpio-export,input = <0>;
-			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
-		};
-
-		mode_switch_wan {
-			gpio-export,name = "mode_wan";
-			gpio-export,input = <0>;
-			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
-		};
-
-		mode_switch_3g {
-			gpio-export,name = "mode_3g";
-			gpio-export,input = <0>;
-			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
-		};
 
 		root_hub {
 			gpio-export,name = "root_hub";
