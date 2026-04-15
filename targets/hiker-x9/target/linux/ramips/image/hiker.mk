@@ -9,9 +9,8 @@ endef
 # Strip unused router stack userland during build (not at first boot).
 # Keep firewall packages (you said firewall is still useful).
 HIKER_X9_STRIP := \
-	-ppp -ppp-mod-pppoe -ppp-mod-pppoa -ppp-mod-pptp -ppp-mod-l2tp \
-	-chat -comgt -comgt-ncm -uqmi -umbim \
-	-dnsmasq -odhcpd -odhcpd-ipv6only -odhcp6c \
+	-ppp -ppp-mod-pppoe \
+	-dnsmasq -odhcpd-ipv6only -odhcp6c \
 	-kmod-ppp -kmod-pppoe -kmod-pppox
 
 define Device/hiker_x9-minimal
