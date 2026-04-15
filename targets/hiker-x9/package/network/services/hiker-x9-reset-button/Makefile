@@ -18,8 +18,9 @@ define Package/hiker-x9-reset-button
 endef
 
 define Package/hiker-x9-reset-button/description
- Shared /etc/rc.button/reset for all Hiker X9 profiles: hold for reboot
-  or factory reset, with red/blue LED feedback.
+ Shared reset button handler for all Hiker X9 profiles. Installs the handler
+ under /usr/share and uses uci-defaults to copy it into /etc/rc.button/reset
+ on first boot, avoiding ownership conflicts with base-files in APK builds.
 endef
 
 define Build/Prepare
@@ -30,8 +31,11 @@ define Build/Compile
 endef
 
 define Package/hiker-x9-reset-button/install
-	$(INSTALL_DIR) $(1)/etc/rc.button
-	$(INSTALL_BIN) ./files/reset $(1)/etc/rc.button/reset
+	$(INSTALL_DIR) $(1)/usr/share/hiker-x9-reset-button
+	$(INSTALL_BIN) ./files/reset $(1)/usr/share/hiker-x9-reset-button/reset
+
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/04-hiker-x9-reset-button $(1)/etc/uci-defaults/04-hiker-x9-reset-button
 endef
 
 $(eval $(call BuildPackage,hiker-x9-reset-button))

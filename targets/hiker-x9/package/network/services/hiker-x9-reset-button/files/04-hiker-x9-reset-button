@@ -1,0 +1,19 @@
+#!/bin/sh
+# Install reset button handler on first boot.
+#
+# We must NOT ship /etc/rc.button/reset directly in the package because
+# base-files owns that path in APK builds, and APK rejects overwrites.
+
+set -eu
+
+src="/usr/share/hiker-x9-reset-button/reset"
+dst="/etc/rc.button/reset"
+
+[ -r "$src" ] || exit 0
+
+mkdir -p /etc/rc.button
+cp -f "$src" "$dst"
+chmod +x "$dst"
+
+exit 0
+
