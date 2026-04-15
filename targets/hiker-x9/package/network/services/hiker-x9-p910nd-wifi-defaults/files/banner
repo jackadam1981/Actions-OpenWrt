@@ -16,11 +16,11 @@
                                             
 -----------------------------------------------------------------
  ================================================================
-  Hiker X9 Print Server + VirtualHere (wired)
+  Hiker X9 Print Server: p910nd + WiFi AP
   OpenWrt | ramips/rt305x
  ----------------------------------------------------------------
-  LuCI (zh) | USB host | VirtualHere USB Server
+  LuCI (zh) | USB printer | p910nd | WiFi AP
   Web UI    : http://192.168.100.1
-  VH port   : 7575/tcp
-  Config    : /etc/virtualhere/config.ini
+  WiFi SSID : HikerP910nd (open by default)
+  Print     : 9100/tcp
  ================================================================

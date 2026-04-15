@@ -14,13 +14,13 @@ define Package/hiker-x9-virtualhere-wifi-defaults
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=Hiker X9 VirtualHere WiFi default configuration
-  DEPENDS:=+virtualhere-usb-server
+  DEPENDS:=+virtualhere-usb-server +hiker-x9-reset-button
   PKGARCH:=all
 endef
 
 define Package/hiker-x9-virtualhere-wifi-defaults/description
- Hiker X9 defaults for the VirtualHere + WiFi profile, including banner,
- first-boot network and wireless setup, plus reset button behavior.
+ Hiker X9 defaults for the VirtualHere + WiFi profile: banner,
+ first-boot network and wireless setup. Reset: hiker-x9-reset-button.
 endef
 
 define Build/Prepare
@@ -33,7 +33,6 @@ endef
 define Package/hiker-x9-virtualhere-wifi-defaults/install
 	$(INSTALL_DIR) $(1)/usr/share/hiker-x9-virtualhere-wifi
 	$(INSTALL_DATA) ./files/banner $(1)/usr/share/hiker-x9-virtualhere-wifi/banner
-	$(INSTALL_BIN) ./files/reset $(1)/usr/share/hiker-x9-virtualhere-wifi/reset
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/99-hiker-x9-virtualhere-wifi $(1)/etc/uci-defaults/99-hiker-x9-virtualhere-wifi

@@ -34,6 +34,9 @@
   - `hiker_x9-p910nd-wifi`
   - `hiker_x9-virtualhere`
   - `hiker_x9-virtualhere-wifi`
+  - `hiker_x9-both`（**p910nd + VirtualHere**，有线；与 `minimal` 相同 WiFi 用户态剔除策略）
+  - `hiker_x9-both-wifi`（同上 + **AP WiFi 栈**）
+- **`package/network/services/`** 下与上述7 个 profile **一一对应** 的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`；另有共用的 **`virtualhere-usb-server`** 与 **`hiker-x9-reset-button`**（安装 `/etc/rc.button/reset`，七个 `*-defaults` 通过 `DEPENDS` 拉入）。
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
 
 ### hiker-x9：`DEVICE_PACKAGES` 一览（对照 `hiker.mk`）
@@ -43,40 +46,46 @@
 
 #### 表 A — 显式装入（`+`）
 
-| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi |
-|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|
-| `luci-light` | + | + | + | + | + |
-| `luci-theme-bootstrap` | + | + | + | + | + |
-| `luci-i18n-base-zh-cn` | + | + | + | + | + |
-| `p910nd` | | + | + | | |
-| `luci-app-p910nd` | | + | + | | |
-| `luci-i18n-p910nd-zh-cn` | | + | + | | |
-| `kmod-usb-core` | | + | + | + | + |
-| `kmod-usb-ohci` | | + | + | + | + |
-| `kmod-usb2` | | + | + | + | + |
-| `kmod-usb-printer` | | + | + | | |
-| `kmod-mac80211` | | | + | | + |
-| `kmod-rt2800-lib` / `kmod-rt2800-mmio` / `kmod-rt2800-soc` | | | + | | + |
-| `kmod-rt2x00-lib` / `kmod-rt2x00-mmio` | | | + | | + |
-| `wpad-mbedtls` | | | + | | + |
-| `iw` | | | + | | + |
-| `iwinfo` | | | + | | + |
-| `virtualhere-usb-server` | | | | + | + |
-| `hiker-x9-virtualhere-defaults` | | | | + | |
-| `hiker-x9-virtualhere-wifi-defaults` | | | | | + |
+| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi | both | both-wifi |
+|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|:----:|:---------:|
+| `luci-light` | + | + | + | + | + | + | + |
+| `luci-theme-bootstrap` | + | + | + | + | + | + | + |
+| `luci-i18n-base-zh-cn` | + | + | + | + | + | + | + |
+| `p910nd` | | + | + | | | + | + |
+| `luci-app-p910nd` | | + | + | | | + | + |
+| `luci-i18n-p910nd-zh-cn` | | + | + | | | + | + |
+| `kmod-usb-core` | | + | + | + | + | + | + |
+| `kmod-usb-ohci` | | + | + | + | + | + | + |
+| `kmod-usb2` | | + | + | + | + | + | + |
+| `kmod-usb-printer` | | + | + | | | + | + |
+| `kmod-mac80211` | | | + | | + | | + |
+| `kmod-rt2800-lib` / `kmod-rt2800-mmio` / `kmod-rt2800-soc` | | | + | | + | | + |
+| `kmod-rt2x00-lib` / `kmod-rt2x00-mmio` | | | + | | + | | + |
+| `wpad-mbedtls` | | | + | | + | | + |
+| `iw` | | | + | | + | | + |
+| `iwinfo` | | | + | | + | | + |
+| `virtualhere-usb-server` | | | | + | + | + | + |
+| `hiker-x9-minimal-defaults` | + | | | | | | |
+| `hiker-x9-p910nd-defaults` | | + | | | | | |
+| `hiker-x9-p910nd-wifi-defaults` | | | + | | | | |
+| `hiker-x9-virtualhere-defaults` | | | | + | | | |
+| `hiker-x9-virtualhere-wifi-defaults` | | | | | + | | |
+| `hiker-x9-both-defaults` | | | | | | + | |
+| `hiker-x9-both-wifi-defaults` | | | | | | | + |
 
 #### 表 B — 显式剔除（`−`）
 
-| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi |
-|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|
-| `wpad-basic-mbedtls` | − | | − | | − |
-| `iw` | − | | | | |
-| `iwinfo` | − | | | | |
+| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi | both | both-wifi |
+|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|:----:|:---------:|
+| `wpad-basic-mbedtls` | − | | − | | − | − | − |
+| `iw` | − | | | | | − | |
+| `iwinfo` | − | | | | | − | |
 
 #### 读表提示
 
-- **`p910nd-wifi` / `virtualhere-wifi`**：`−wpad-basic-mbedtls` 与 **`+wpad-mbedtls`** 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
-- **`minimal`**：保留 LuCI 与中文，但 **`−wpad-basic-mbedtls`** 且 **`−iw` / `−iwinfo`**，倾向 **有线管理、不装 AP 侧 WiFi 用户态**；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
+- **`p910nd-wifi` / `virtualhere-wifi` / `both-wifi`**：`−wpad-basic-mbedtls` 与 **`+wpad-mbedtls`** 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
+- **每个 profile 对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile维护；**复位键脚本** 集中在 **`hiker-x9-reset-button`**；**`both*`** 仍不复用 **`virtualhere-*-defaults`**。
+- **`minimal`**：保留 LuCI 与中文，**`+hiker-x9-minimal-defaults`**，且 **`−wpad-basic-mbedtls`**、**`−iw` / `−iwinfo`**；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
 - **`p910nd`（无 WiFi）**：未写 **`−wpad-*`**，即 **沿用该 target 默认的 wpad 组合**（若与后续精简策略冲突，可再单独加 `−` 行对齐 `minimal`）。
 
 **仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 仍会作为 feed 加入，可继续复用其中已有的设备思路；但本仓已经支持在 `targets/hiker-x9/` 下直接维护本地 overlay 和自定义 package（例如 `virtualhere-usb-server`）。

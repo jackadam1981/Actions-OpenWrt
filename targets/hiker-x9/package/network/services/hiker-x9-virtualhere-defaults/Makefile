@@ -14,13 +14,13 @@ define Package/hiker-x9-virtualhere-defaults
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=Hiker X9 VirtualHere default configuration
-  DEPENDS:=+virtualhere-usb-server
+  DEPENDS:=+virtualhere-usb-server +hiker-x9-reset-button
   PKGARCH:=all
 endef
 
 define Package/hiker-x9-virtualhere-defaults/description
- Hiker X9 defaults for the VirtualHere profile, including banner, first-boot
- network setup and reset button behavior.
+ Hiker X9 defaults for the VirtualHere profile: banner and first-boot
+ network setup. Reset button: package hiker-x9-reset-button.
 endef
 
 define Build/Prepare
@@ -33,7 +33,6 @@ endef
 define Package/hiker-x9-virtualhere-defaults/install
 	$(INSTALL_DIR) $(1)/usr/share/hiker-x9-virtualhere
 	$(INSTALL_DATA) ./files/banner $(1)/usr/share/hiker-x9-virtualhere/banner
-	$(INSTALL_BIN) ./files/reset $(1)/usr/share/hiker-x9-virtualhere/reset
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/99-hiker-x9-virtualhere $(1)/etc/uci-defaults/99-hiker-x9-virtualhere

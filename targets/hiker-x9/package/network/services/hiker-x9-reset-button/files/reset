@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hiker VirtualHere - Reset Button Handler with LED feedback
+# Hiker X9 - reset button (GPIO) handler with LED feedback
 # 按住2秒：开始红蓝交替闪，松开红蓝长亮2秒，重启
 # 按住超过5秒：开始红蓝同时闪，松开红蓝长亮2秒，恢复出厂设置
 

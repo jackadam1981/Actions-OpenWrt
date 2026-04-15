@@ -16,6 +16,7 @@ define Device/hiker_x9-minimal
 	DEVICE_PACKAGES := \
 		luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-minimal-defaults \
 		-wpad-basic-mbedtls \
 		-iw -iwinfo
 endef
@@ -29,7 +30,8 @@ define Device/hiker_x9-p910nd
 	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
-		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer
+		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
+		hiker-x9-p910nd-defaults
 endef
 TARGET_DEVICES += hiker_x9-p910nd
 
@@ -42,6 +44,7 @@ define Device/hiker_x9-p910nd-wifi
 		luci-i18n-base-zh-cn \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
+		hiker-x9-p910nd-wifi-defaults \
 		kmod-mac80211 kmod-rt2800-lib kmod-rt2800-mmio kmod-rt2800-soc \
 		kmod-rt2x00-lib kmod-rt2x00-mmio \
 		wpad-mbedtls iw iwinfo
@@ -76,3 +79,37 @@ define Device/hiker_x9-virtualhere-wifi
 		wpad-mbedtls iw iwinfo
 endef
 TARGET_DEVICES += hiker_x9-virtualhere-wifi
+
+define Device/hiker_x9-both
+	$(call Device/hiker_hiker-common)
+	DEVICE_MODEL := Hiker X9 Print + VirtualHere
+	DEVICE_DTS := rt5350_hiker_x9-both
+	SUPPORTED_DEVICES := hiker,x9-both hiker,x9 HIKER
+	DEVICE_PACKAGES := \
+		luci-light luci-theme-bootstrap \
+		luci-i18n-base-zh-cn \
+		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
+		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
+		virtualhere-usb-server \
+		hiker-x9-both-defaults \
+		-wpad-basic-mbedtls \
+		-iw -iwinfo
+endef
+TARGET_DEVICES += hiker_x9-both
+
+define Device/hiker_x9-both-wifi
+	$(call Device/hiker_hiker-common)
+	DEVICE_MODEL := Hiker X9 Print + VirtualHere WiFi
+	DEVICE_DTS := rt5350_hiker_x9-both-wifi
+	SUPPORTED_DEVICES := hiker,x9-both-wifi hiker,x9 HIKER
+	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
+		luci-i18n-base-zh-cn \
+		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
+		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
+		virtualhere-usb-server \
+		hiker-x9-both-wifi-defaults \
+		kmod-mac80211 kmod-rt2800-lib kmod-rt2800-mmio kmod-rt2800-soc \
+		kmod-rt2x00-lib kmod-rt2x00-mmio \
+		wpad-mbedtls iw iwinfo
+endef
+TARGET_DEVICES += hiker_x9-both-wifi

@@ -1,9 +1,8 @@
 #!/bin/sh
-# Hiker VirtualHere network configuration
-# Execute on first boot
+# Hiker X9 minimal profile (wired)
 
 mkdir -p /etc/rc.button
-cp -f /usr/share/hiker-x9-virtualhere/banner /etc/banner
+cp -f /usr/share/hiker-x9-minimal/banner /etc/banner
 
 uci delete network.lan 2>/dev/null
 
@@ -44,14 +43,9 @@ if [ -n "$wan_zone_idx" ]; then
     uci add_list firewall.@zone[$wan_zone_idx].network=wan6 2>/dev/null
 fi
 
-uci set system.@system[0].hostname=HikerVirtualHere 2>/dev/null
+uci set system.@system[0].hostname=HikerMinimal 2>/dev/null
 uci set system.@system[0].zonename=Asia/Shanghai 2>/dev/null
 uci set system.@system[0].timezone=CST-8 2>/dev/null
-
-if [ -f /etc/config/virtualhere-usb-server ]; then
-    uci set virtualhere-usb-server.server.enabled=1 2>/dev/null
-    uci commit virtualhere-usb-server 2>/dev/null
-fi
 
 led_exists=$(uci show system 2>/dev/null | grep "\.name='led_r'" | cut -d'=' -f1 | cut -d'.' -f1-2 | head -1)
 if [ -z "$led_exists" ]; then
