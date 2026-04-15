@@ -1,0 +1,100 @@
+#!/bin/sh
+# Hiker X9 first-boot: auto flash Breed into u-boot
+#
+# WARNING:
+# - Flashing bootloader is risky and can brick the device if interrupted.
+# - This script runs once on first boot and will reboot after flashing.
+
+set -eu
+
+BREED_IMAGE="/usr/share/hiker-x9-breed/breed-rt5350-blank.uimage"
+BOARD_NAME_FILE="/tmp/sysinfo/board_name"
+
+log() {
+	logger -t breed-autoflash "$*"
+	echo "breed-autoflash: $*" > /dev/console 2>/dev/null || true
+}
+
+hex4() {
+	# Print first 4 bytes as hex string without spaces
+	dd if="$1" bs=4 count=1 2>/dev/null | hexdump -v -n 4 -e '1/1 "%02x"'
+}
+
+uimage_name() {
+	# uImage header name field: offset 32, length 32
+	dd if="$1" bs=1 skip=32 count=32 2>/dev/null | tr -d '\000'
+}
+
+is_breed() {
+	# Compare uImage name field to detect Breed
+	[ "$(uimage_name "$1")" = "Breed for RT5350" ]
+}
+
+check_mtd_layout() {
+	# Require u-boot partition size 0x30000 and factory/env existence
+	grep -qE '^mtd0: 00030000 00010000 "u-boot"$' /proc/mtd || return 1
+	grep -qE '^mtd1: 00010000 00010000 "u-boot-env"$' /proc/mtd || return 1
+	grep -qE '^mtd2: 00010000 00010000 "factory"$' /proc/mtd || return 1
+	return 0
+}
+
+backup_partitions() {
+	local dest="$1"
+	mkdir -p "$dest"
+
+	log "Backing up mtd0/mtd1/mtd2 into $dest"
+
+	dd if=/dev/mtd0ro of="$dest/mtd0_u-boot.bin" bs=4096 count=48 2>/dev/null || return 1
+	dd if=/dev/mtd1ro of="$dest/mtd1_u-boot-env.bin" bs=4096 count=16 2>/dev/null || return 1
+	dd if=/dev/mtd2ro of="$dest/mtd2_factory.bin" bs=4096 count=16 2>/dev/null || return 1
+	sync
+	return 0
+}
+
+main() {
+	# Gate: only on Hiker board_name=hiker
+	if [ -r "$BOARD_NAME_FILE" ]; then
+		board="$(cat "$BOARD_NAME_FILE" 2>/dev/null || true)"
+	else
+		board=""
+	fi
+	[ "$board" = "hiker" ] || { log "Skip: board_name='$board'"; return 0; }
+
+	[ -r "$BREED_IMAGE" ] || { log "Skip: missing $BREED_IMAGE"; return 0; }
+
+	check_mtd_layout || { log "Skip: unexpected /proc/mtd layout"; return 0; }
+
+	# Sanity: require Breed image to be uImage with correct magic and name
+	[ "$(hex4 "$BREED_IMAGE")" = "27051956" ] || { log "Skip: breed image is not uImage"; return 0; }
+	[ "$(uimage_name "$BREED_IMAGE")" = "Breed for RT5350" ] || { log "Skip: breed image name mismatch"; return 0; }
+
+	# Detect current u-boot: if already Breed, do nothing
+	[ -c /dev/mtd0ro ] || { log "Skip: /dev/mtd0ro not present"; return 0; }
+	if [ "$(hex4 /dev/mtd0ro)" = "27051956" ] && is_breed /dev/mtd0ro; then
+		log "Already Breed; nothing to do"
+		return 0
+	fi
+
+	# Backup before flashing
+	ts="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
+	backup_dir="/root/breed-backup-$ts"
+	if ! backup_partitions "$backup_dir"; then
+		backup_dir="/tmp/breed-backup-$ts"
+		backup_partitions "$backup_dir" || { log "Backup failed; abort"; return 0; }
+	fi
+
+	log "Flashing Breed into mtd0 (u-boot) from $BREED_IMAGE"
+	mtd write "$BREED_IMAGE" u-boot || { log "mtd write failed; abort"; return 0; }
+	sync
+
+	log "Flash done; rebooting"
+	reboot -f || reboot || true
+}
+
+main
+
+# Ensure uci-defaults does not run again if reboot didn't happen
+rm -f "$0" 2>/dev/null || true
+
+exit 0
+

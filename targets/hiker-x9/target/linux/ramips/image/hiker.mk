@@ -16,6 +16,7 @@ define Device/hiker_x9-minimal
 	DEVICE_PACKAGES := \
 		luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-breed-autoflash \
 		hiker-x9-minimal-defaults \
 		-wpad-basic-mbedtls \
 		-iw -iwinfo
@@ -29,6 +30,7 @@ define Device/hiker_x9-p910nd
 	SUPPORTED_DEVICES := hiker,x9-print hiker,x9 HIKER
 	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-breed-autoflash \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		hiker-x9-p910nd-defaults
@@ -42,6 +44,7 @@ define Device/hiker_x9-p910nd-wifi
 	SUPPORTED_DEVICES := hiker,x9-p910nd-wifi hiker,x9 HIKER
 	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-breed-autoflash \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		hiker-x9-p910nd-wifi-defaults \
@@ -58,6 +61,7 @@ define Device/hiker_x9-virtualhere
 	SUPPORTED_DEVICES := hiker,x9-virtualhere hiker,x9 HIKER
 	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-breed-autoflash \
 		virtualhere-usb-server \
 		hiker-x9-virtualhere-defaults \
 		kmod-usb-core kmod-usb-ohci kmod-usb2
@@ -71,6 +75,7 @@ define Device/hiker_x9-virtualhere-wifi
 	SUPPORTED_DEVICES := hiker,x9-virtualhere-wifi hiker,x9 HIKER
 	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-breed-autoflash \
 		virtualhere-usb-server \
 		hiker-x9-virtualhere-wifi-defaults \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 \
@@ -88,6 +93,7 @@ define Device/hiker_x9-both
 	DEVICE_PACKAGES := \
 		luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-breed-autoflash \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		virtualhere-usb-server \
@@ -104,6 +110,7 @@ define Device/hiker_x9-both-wifi
 	SUPPORTED_DEVICES := hiker,x9-both-wifi hiker,x9 HIKER
 	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		hiker-x9-breed-autoflash \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		virtualhere-usb-server \

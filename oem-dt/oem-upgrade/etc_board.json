@@ -1,0 +1,45 @@
+### /etc/board.json
+{
+	"led": {
+		"blue": {
+			"name": "BLUE",
+			"sysfs": "hiker:blue:led_b",
+			"default": "1"
+		},
+		"red": {
+			"name": "RED",
+			"sysfs": "hiker:red:led_r",
+			"default": "1"
+		}
+	},
+	"network": {
+		"lan": {
+			"ifname": "eth0",
+			"create_vlan": true,
+			"macaddr": "2c:67:fb:38:87:34"
+		},
+		"wan": {
+			"ifname": "eth0",
+			"create_vlan": true,
+			"macaddr": "2c:67:fb:38:87:33"
+		}
+	},
+	"switch": {
+		"switch0": {
+			"enable": true,
+			"reset": true,
+			"vlans": {
+				"lan": [
+					0,
+					1,
+					2,
+					3
+				],
+				"wan": [
+					4
+				]
+			},
+			"cpu_port": 6
+		}
+	}
+}

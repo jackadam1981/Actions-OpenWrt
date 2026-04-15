@@ -1,0 +1,21 @@
+[mtd]
+dev:    size   erasesize  name
+mtd0: 00030000 00010000 "u-boot"
+mtd1: 00010000 00010000 "u-boot-env"
+mtd2: 00010000 00010000 "factory"
+mtd3: 007b0000 00010000 "firmware"
+mtd4: 00120669 00010000 "kernel"
+mtd5: 0068f997 00010000 "rootfs"
+mtd6: 00130000 00010000 "rootfs_data"
+backup /dev/mtd0ro (u-boot) size=00030000 bytes=196608 blocks=48 -> /tmp/mtd0_u-boot.bin
+-rw-r--r--    1 root     root        196608 Sep 25 08:31 /tmp/mtd0_u-boot.bin
+5e9bcec7df455f11d457bb3d1315ee0d  /tmp/mtd0_u-boot.bin
+07c98f640d525de39f2257aa5c8257e25c30c7b34f14e95a8a3fd055180d9ad2  /tmp/mtd0_u-boot.bin
+backup /dev/mtd1ro (u-boot-env) size=00010000 bytes=65536 blocks=16 -> /tmp/mtd1_u-boot-env.bin
+-rw-r--r--    1 root     root         65536 Sep 25 08:31 /tmp/mtd1_u-boot-env.bin
+ecb99e6ffea7be1e5419350f725da86b  /tmp/mtd1_u-boot-env.bin
+71189f7fb6aed638640078fba3a35fda6c39c8962e74dcc75935aac948da9063  /tmp/mtd1_u-boot-env.bin
+backup /dev/mtd2ro (factory) size=00010000 bytes=65536 blocks=16 -> /tmp/mtd2_factory.bin
+-rw-r--r--    1 root     root         65536 Sep 25 08:31 /tmp/mtd2_factory.bin
+746c422683bc9af8bb1cb37b016a74a1  /tmp/mtd2_factory.bin
+0d90441198f3833c60cbc020018fd02e170dd9b7a2ab56934b7c15ab9eb16512  /tmp/mtd2_factory.bin
