@@ -6,6 +6,14 @@ define Device/hiker_hiker-common
 	DEVICE_VENDOR := Hiker
 endef
 
+# Strip unused router stack userland during build (not at first boot).
+# Keep firewall packages (you said firewall is still useful).
+HIKER_X9_STRIP := \
+	-ppp -ppp-mod-pppoe -ppp-mod-pppoa -ppp-mod-pptp -ppp-mod-l2tp \
+	-chat -comgt -comgt-ncm -uqmi -umbim \
+	-dnsmasq -odhcpd -odhcpd-ipv6only -odhcp6c \
+	-kmod-ppp -kmod-pppoe -kmod-pppox
+
 define Device/hiker_x9-minimal
 	$(call Device/hiker_hiker-common)
 	DEVICE_MODEL := Hiker X9 Minimal
@@ -16,6 +24,7 @@ define Device/hiker_x9-minimal
 	DEVICE_PACKAGES := \
 		luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		hiker-x9-minimal-defaults \
 		-wpad-basic-mbedtls \
 		-iw -iwinfo
@@ -31,6 +40,7 @@ define Device/hiker_x9-factory
 	DEVICE_PACKAGES := \
 		luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		hiker-x9-breed-autoflash \
 		hiker-x9-minimal-defaults \
 		-wpad-basic-mbedtls \
@@ -47,6 +57,7 @@ define Device/hiker_x9-p910nd
 	SUPPORTED_DEVICES := hiker,x9-print hiker,x9 HIKER
 	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		hiker-x9-p910nd-defaults
@@ -60,6 +71,7 @@ define Device/hiker_x9-p910nd-wifi
 	SUPPORTED_DEVICES := hiker,x9-p910nd-wifi hiker,x9 HIKER
 	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		hiker-x9-p910nd-wifi-defaults \
@@ -76,6 +88,7 @@ define Device/hiker_x9-virtualhere
 	SUPPORTED_DEVICES := hiker,x9-virtualhere hiker,x9 HIKER
 	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		virtualhere-usb-server \
 		hiker-x9-virtualhere-defaults \
 		kmod-usb-core kmod-usb-ohci kmod-usb2
@@ -89,6 +102,7 @@ define Device/hiker_x9-virtualhere-wifi
 	SUPPORTED_DEVICES := hiker,x9-virtualhere-wifi hiker,x9 HIKER
 	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		virtualhere-usb-server \
 		hiker-x9-virtualhere-wifi-defaults \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 \
@@ -106,6 +120,7 @@ define Device/hiker_x9-both
 	DEVICE_PACKAGES := \
 		luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		virtualhere-usb-server \
@@ -122,6 +137,7 @@ define Device/hiker_x9-both-wifi
 	SUPPORTED_DEVICES := hiker,x9-both-wifi hiker,x9 HIKER
 	DEVICE_PACKAGES := -wpad-basic-mbedtls luci-light luci-theme-bootstrap \
 		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
 		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
 		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
 		virtualhere-usb-server \
