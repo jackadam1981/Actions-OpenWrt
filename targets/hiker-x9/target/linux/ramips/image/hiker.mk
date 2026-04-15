@@ -36,7 +36,7 @@ define Device/hiker_x9-factory
 		-wpad-basic-mbedtls \
 		-iw -iwinfo
 	IMAGES += factory.bin
-	IMAGE/factory.bin := $$(sysupgrade_bin)
+	IMAGE/factory.bin := $$(sysupgrade_bin) | check-size
 endef
 TARGET_DEVICES += hiker_x9-factory
 
