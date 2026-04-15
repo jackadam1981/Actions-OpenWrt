@@ -11,8 +11,13 @@ define Device/hiker_x9-minimal
 	DEVICE_MODEL := Hiker X9 Minimal
 	DEVICE_DTS := rt5350_hiker_x9-minimal
 	SUPPORTED_DEVICES := hiker,x9-minimal hiker,x9 HIKER
-	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
-		luci-i18n-base-zh-cn
+	# Golden base image: wired LAN only + LuCI (zh). Strip WiFi/AP userspace from
+	# target defaults (same -wpad-basic-mbedtls pattern as WiFi profiles).
+	DEVICE_PACKAGES := \
+		luci-light luci-theme-bootstrap \
+		luci-i18n-base-zh-cn \
+		-wpad-basic-mbedtls \
+		-iw -iwinfo
 endef
 TARGET_DEVICES += hiker_x9-minimal
 

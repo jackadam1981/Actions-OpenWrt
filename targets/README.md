@@ -29,12 +29,55 @@
 当前 hiker-x9 采用 **ramips / rt305x + 设备 overlay** 的方式扩展，不再依赖单独的 `printserver` target。仓库会在构建时把 `targets/hiker-x9/target/linux/ramips/**` 合并进 OpenWrt 源码树，并把额外的 `hiker.mk` 接入 `rt305x.mk`。
 
 - **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、**`CONFIG_TARGET_MULTI_PROFILE=y`**、**`CONFIG_TARGET_PER_DEVICE_ROOTFS=y`**，以及多个 **`CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y`**（注意是 **`TARGET_DEVICE_…`** 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
-  - `hiker_x9-minimal`
+  - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`）
   - `hiker_x9-p910nd`
   - `hiker_x9-p910nd-wifi`
   - `hiker_x9-virtualhere`
   - `hiker_x9-virtualhere-wifi`
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
+
+### hiker-x9：`DEVICE_PACKAGES` 一览（对照 `hiker.mk`）
+
+以下只统计 **`hiker.mk` 里每个 profile 的显式项**：以 **`+`** 表示强制装入，**`−`** 表示从 **该 subtarget 的默认包集合** 中剔除（OpenWrt 的 `-包名` 语义）。  
+**未出现在表里的包**：仍可能来自 **ramips/rt305x 路由器镜像的默认包**（如 `dropbear`、`firewall`、`dnsmasq` 等，随上游版本略有变动），除非被 **`−`** 去掉。
+
+#### 表 A — 显式装入（`+`）
+
+| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi |
+|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|
+| `luci-light` | + | + | + | + | + |
+| `luci-theme-bootstrap` | + | + | + | + | + |
+| `luci-i18n-base-zh-cn` | + | + | + | + | + |
+| `p910nd` | | + | + | | |
+| `luci-app-p910nd` | | + | + | | |
+| `luci-i18n-p910nd-zh-cn` | | + | + | | |
+| `kmod-usb-core` | | + | + | + | + |
+| `kmod-usb-ohci` | | + | + | + | + |
+| `kmod-usb2` | | + | + | + | + |
+| `kmod-usb-printer` | | + | + | | |
+| `kmod-mac80211` | | | + | | + |
+| `kmod-rt2800-lib` / `kmod-rt2800-mmio` / `kmod-rt2800-soc` | | | + | | + |
+| `kmod-rt2x00-lib` / `kmod-rt2x00-mmio` | | | + | | + |
+| `wpad-mbedtls` | | | + | | + |
+| `iw` | | | + | | + |
+| `iwinfo` | | | + | | + |
+| `virtualhere-usb-server` | | | | + | + |
+| `hiker-x9-virtualhere-defaults` | | | | + | |
+| `hiker-x9-virtualhere-wifi-defaults` | | | | | + |
+
+#### 表 B — 显式剔除（`−`）
+
+| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi |
+|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|
+| `wpad-basic-mbedtls` | − | | − | | − |
+| `iw` | − | | | | |
+| `iwinfo` | − | | | | |
+
+#### 读表提示
+
+- **`p910nd-wifi` / `virtualhere-wifi`**：`−wpad-basic-mbedtls` 与 **`+wpad-mbedtls`** 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
+- **`minimal`**：保留 LuCI 与中文，但 **`−wpad-basic-mbedtls`** 且 **`−iw` / `−iwinfo`**，倾向 **有线管理、不装 AP 侧 WiFi 用户态**；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
+- **`p910nd`（无 WiFi）**：未写 **`−wpad-*`**，即 **沿用该 target 默认的 wpad 组合**（若与后续精简策略冲突，可再单独加 `−` 行对齐 `minimal`）。
 
 **仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 仍会作为 feed 加入，可继续复用其中已有的设备思路；但本仓已经支持在 `targets/hiker-x9/` 下直接维护本地 overlay 和自定义 package（例如 `virtualhere-usb-server`）。
 
