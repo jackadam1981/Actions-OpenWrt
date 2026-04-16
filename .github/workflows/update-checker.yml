@@ -2,7 +2,10 @@
 # https://github.com/P3TERX/Actions-OpenWrt
 #
 # File: .github/workflows/update-checker.yml
-# Description: Source code update checker
+# Description: Poll upstream commits; on change, repository_dispatch to trigger builders.
+#
+# Requires repository secret REPO_DISPATCH_PAT: classic PAT with repo scope (fine-grained:
+# Contents read+write, Metadata read). Default GITHUB_TOKEN cannot start other workflows.
 #
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
@@ -12,48 +15,83 @@
 
 name: Update Checker
 
-env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
-  REPO_BRANCH: master
-
 on:
   workflow_dispatch:
 #  schedule:
 #    - cron: 0 */18 * * *
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
-  check:
+  check-openwrt:
     runs-on: ubuntu-latest
-
     steps:
+      - name: Get commit hash (openwrt/openwrt)
+        id: getHash
+        run: |
+          git clone --depth 1 https://github.com/openwrt/openwrt -b master .
+          echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-    - name: Get Commit Hash
-      id: getHash
-      run: |
-        git clone --depth 1 $REPO_URL -b $REPO_BRANCH .
-        echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+      - name: Compare commit hash
+        id: cacheHash
+        uses: actions/cache@v4
+        with:
+          path: .commitHash
+          key: commitHash_openwrt_${{ steps.getHash.outputs.commitHash }}
 
-    - name: Compare Commit Hash
-      id: cacheHash
-      uses: actions/cache@v3
-      with:
-        path: .commitHash
-        key: commitHash_${{ steps.getHash.outputs.commitHash }}
+      - name: Save new commit hash
+        if: steps.cacheHash.outputs.cache-hit != 'true'
+        run: echo "${{ steps.getHash.outputs.commitHash }}" | tee .commitHash
 
-    - name: Save New Commit Hash
-      if: steps.cacheHash.outputs.cache-hit != 'true'
-      run: |
-        echo ${{ steps.getHash.outputs.commitHash }} | tee .commitHash
+      - name: Trigger OpenWrt Builder
+        if: steps.cacheHash.outputs.cache-hit != 'true'
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.REPO_DISPATCH_PAT }}
+          repository: ${{ github.repository }}
+          event-type: OpenWrt Source Update
 
-    - name: Trigger build
-      if: steps.cacheHash.outputs.cache-hit != 'true'
-      uses: peter-evans/repository-dispatch@v2
-      with:
-        token: ${{ github.token }}
-        event-type: Source Code Update
+  check-lede:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get commit hash (coolsnowwolf/lede)
+        id: getHash
+        run: |
+          git clone --depth 1 https://github.com/coolsnowwolf/lede -b master .
+          echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-    - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@v2
-      with:
-        retain_days: 0
-        keep_minimum_runs: 2
+      - name: Compare commit hash
+        id: cacheHash
+        uses: actions/cache@v4
+        with:
+          path: .commitHash
+          key: commitHash_lede_${{ steps.getHash.outputs.commitHash }}
+
+      - name: Save new commit hash
+        if: steps.cacheHash.outputs.cache-hit != 'true'
+        run: echo "${{ steps.getHash.outputs.commitHash }}" | tee .commitHash
+
+      - name: Trigger LEDE Builder
+        if: steps.cacheHash.outputs.cache-hit != 'true'
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.REPO_DISPATCH_PAT }}
+          repository: ${{ github.repository }}
+          event-type: LEDE Source Update
+
+  cleanup-runs:
+    needs: [check-openwrt, check-lede]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 2

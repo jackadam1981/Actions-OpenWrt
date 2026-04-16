@@ -1,7 +1,7 @@
 #
 # https://github.com/P3TERX/Actions-OpenWrt
 #
-# File: .github/workflows/openwrt-bulder.yml
+# File: .github/workflows/openwrt-builder.yml
 # Description: Build OpenWrt using GitHub Actions
 #
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
@@ -24,7 +24,7 @@ on:
       - 'feeds.conf.default'
   repository_dispatch:
     types:
-      - Source Code Update
+      - OpenWrt Source Update
   workflow_dispatch:
 
 # contents: release/tags; actions: required by Mattraks/delete-workflow-runs (delete workflow runs API).
@@ -54,7 +54,7 @@ jobs:
       configs: ${{ steps.list.outputs.configs }}
     steps:
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
 
     - name: List targets (targets/<name>/.config)
       id: list
@@ -101,7 +101,7 @@ jobs:
         fi
 
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
 
     - name: Initialization environment
       env:
@@ -179,7 +179,7 @@ jobs:
       run: df -hT
 
     - name: Upload bin directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin_${{ env.CONFIG_SLUG }}
@@ -195,7 +195,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware_${{ env.CONFIG_SLUG }}
@@ -208,7 +208,7 @@ jobs:
     steps:
     - name: Download all firmware artifacts
       if: env.UPLOAD_RELEASE == 'true'
-      uses: actions/download-artifact@main
+      uses: actions/download-artifact@v4
 
     - name: Generate release tag
       if: env.UPLOAD_RELEASE == 'true'

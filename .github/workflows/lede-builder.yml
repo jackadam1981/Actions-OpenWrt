@@ -1,8 +1,8 @@
 #
 # https://github.com/P3TERX/Actions-OpenWrt
 #
-# File: .github/workflows/openwrt-bulder.yml
-# Description: Build OpenWrt using GitHub Actions
+# File: .github/workflows/lede-builder.yml
+# Description: Build coolsnowwolf/lede (LEDE) with GitHub Actions
 #
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
@@ -10,10 +10,13 @@
 # See /LICENSE for more information.
 #
 
-name: LEDE OpenWrt Builder
+name: LEDE Builder
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types:
+      - LEDE Source Update
 
 permissions:
   contents: write
@@ -39,7 +42,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
 
     - name: Initialization environment
       env:
@@ -112,7 +115,7 @@ jobs:
       run: df -hT
 
     - name: Upload bin directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -128,7 +131,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware directory
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
