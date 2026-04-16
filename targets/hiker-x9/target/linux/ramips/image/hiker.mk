@@ -80,6 +80,24 @@ define Device/hiker_x9-p910nd-wifi
 endef
 TARGET_DEVICES += hiker_x9-p910nd-wifi
 
+define Device/hiker_x9-p910nd-wifi-lite
+	$(call Device/hiker_hiker-common)
+	DEVICE_MODEL := Hiker X9 Print WiFi (lite)
+	DEVICE_DTS := rt5350_hiker_x9-p910nd-wifi
+	SUPPORTED_DEVICES := hiker,x9-p910nd-wifi-lite hiker,x9 HIKER
+	# Same as p910nd-wifi but use smaller wpad variant for 8M/32M devices.
+	DEVICE_PACKAGES := luci-light luci-theme-bootstrap \
+		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
+		p910nd luci-app-p910nd luci-i18n-p910nd-zh-cn \
+		kmod-usb-core kmod-usb-ohci kmod-usb2 kmod-usb-printer \
+		hiker-x9-p910nd-wifi-lite-defaults \
+		kmod-mac80211 kmod-rt2800-lib kmod-rt2800-mmio kmod-rt2800-soc \
+		kmod-rt2x00-lib kmod-rt2x00-mmio \
+		wpad-basic-mbedtls iw iwinfo
+endef
+TARGET_DEVICES += hiker_x9-p910nd-wifi-lite
+
 define Device/hiker_x9-virtualhere
 	$(call Device/hiker_hiker-common)
 	DEVICE_MODEL := Hiker X9 VirtualHere
