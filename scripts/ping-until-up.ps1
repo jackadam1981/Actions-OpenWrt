@@ -1,18 +1,18 @@
 <#
 .SYNOPSIS
-  刷机后计时：循环 ping 目标，直到首次成功，输出已等待秒数。
+  Post-flash: ping target until first reply; prints elapsed seconds (计时 ping).
 
 .DESCRIPTION
-  用于观察路由器/开发板重启后多久能 ping 通。默认每 1 秒探测一次，打印当前已耗时。
+  Use after flash/reboot to see how long until the device answers ping. Default probe every 1s.
 
 .PARAMETER Target
-  目标 IP 或主机名（默认 192.168.1.1，常见 OpenWrt LAN）。
+  IP or hostname (default 192.168.1.1, typical OpenWrt LAN).
 
 .PARAMETER IntervalSeconds
-  两次探测之间的间隔秒数（默认 1）。
+  Seconds between probes (default 1).
 
 .PARAMETER MaxWaitSeconds
-  最长等待秒数，超时退出码 1（默认 0 表示不限制，可用 Ctrl+C 结束）。
+  Stop after this many seconds with exit code 1 (default 0 = unlimited). Ctrl+C always stops.
 
 .EXAMPLE
   .\scripts\ping-until-up.ps1
@@ -27,14 +27,15 @@ param(
 $ErrorActionPreference = "Stop"
 $start = [Diagnostics.Stopwatch]::StartNew()
 
-Write-Host "目标: $Target | 间隔: ${IntervalSeconds}s | 最长等待: $(if ($MaxWaitSeconds -gt 0) { "${MaxWaitSeconds}s" } else { '无限制' })"
-Write-Host "按 Ctrl+C 可随时停止。"
+$maxLabel = if ($MaxWaitSeconds -gt 0) { "${MaxWaitSeconds}s" } else { "unlimited" }
+Write-Host "Target: $Target | Interval: ${IntervalSeconds}s | Max wait: $maxLabel"
+Write-Host "Press Ctrl+C to stop."
 Write-Host ""
 
 while ($true) {
     $elapsed = $start.Elapsed
     if ($MaxWaitSeconds -gt 0 -and $elapsed.TotalSeconds -ge $MaxWaitSeconds) {
-        Write-Host ("[{0,6:F1}s] 超时仍未 ping 通。" -f $elapsed.TotalSeconds)
+        Write-Host ("[{0,6:F1}s] Timeout, still no ping reply." -f $elapsed.TotalSeconds)
         exit 1
     }
 
@@ -45,10 +46,10 @@ while ($true) {
     }
 
     if ($ok) {
-        Write-Host ("[{0,6:F1}s] 已 ping 通: {1}" -f $elapsed.TotalSeconds, $Target)
+        Write-Host ("[{0,6:F1}s] Ping OK: {1}" -f $elapsed.TotalSeconds, $Target)
         exit 0
     }
 
-    Write-Host ("[{0,6:F1}s] 无响应..." -f $elapsed.TotalSeconds)
+    Write-Host ("[{0,6:F1}s] No reply..." -f $elapsed.TotalSeconds)
     Start-Sleep -Seconds $IntervalSeconds
 }

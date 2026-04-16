@@ -126,4 +126,4 @@
 
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
 
-**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。
+**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。**`.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错。
