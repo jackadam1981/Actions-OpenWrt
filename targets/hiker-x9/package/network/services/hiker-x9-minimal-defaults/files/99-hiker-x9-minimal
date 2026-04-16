@@ -7,6 +7,9 @@ BOOT_S="$(cut -d. -f1 /proc/uptime 2>/dev/null)"
 mkdir -p /etc/rc.button
 cp -f /usr/share/hiker-x9-minimal/banner /etc/banner
 
+# Enable boot metrics logger (every boot).
+[ -x /etc/init.d/hiker-boot-metrics ] && /etc/init.d/hiker-boot-metrics enable 2>/dev/null
+
 uci delete network.lan 2>/dev/null
 
 uci set network.LanBackup=interface

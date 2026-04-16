@@ -36,6 +36,12 @@ define Package/hiker-x9-minimal-defaults/install
 
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/99-hiker-x9-minimal $(1)/etc/uci-defaults/99-hiker-x9-minimal
+
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/hiker-boot-metrics.init $(1)/etc/init.d/hiker-boot-metrics
+
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
+	$(INSTALL_BIN) ./files/99-hiker-boot-metrics.iface $(1)/etc/hotplug.d/iface/99-hiker-boot-metrics
 endef
 
 $(eval $(call BuildPackage,hiker-x9-minimal-defaults))

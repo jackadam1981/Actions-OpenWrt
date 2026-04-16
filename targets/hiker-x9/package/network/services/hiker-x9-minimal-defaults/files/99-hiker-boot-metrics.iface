@@ -1,0 +1,10 @@
+#!/bin/sh
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+case "$INTERFACE" in
+	LanBackup|lan)
+		logger -t hiker-boot "iface ${INTERFACE} up +$(cut -d. -f1 /proc/uptime)s"
+		;;
+esac
+
