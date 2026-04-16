@@ -125,3 +125,5 @@
 > **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。**从官版首刷**请使用 **`hiker_x9-factory` 的 `factory.bin`**（见上文与 [刷机文档](../docs/flashing-from-bin-and-source.md)）。
 
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
+
+**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。
