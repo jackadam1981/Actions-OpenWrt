@@ -4,6 +4,8 @@
 
 **刷机后指示灯**：首次启动或写入未完成时，**电源旁红灯常会闪烁**。**请等到红灯不再闪烁**（常亮或熄灭，以硬件为准）**后再视为正常可用**；闪烁期间请勿反复断电，以免损坏固件或分区。
 
+**首启耗时参考（本仓实测）**：刷 **`hiker_x9-minimal`（黄金底 / mini）** 后，LAN 侧用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1) 计时至首次 **ICMP ping 通** 约 **680 s**（约 11 min；非基准值，见 [targets/README.md](../targets/README.md) 说明）。
+
 ---
 
 ## 1. 预期产物（`bin/targets/...`）

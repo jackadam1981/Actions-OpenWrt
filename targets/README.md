@@ -29,7 +29,7 @@
 当前 hiker-x9 采用 **ramips / rt305x + 设备 overlay** 的方式扩展，不再依赖单独的 `printserver` target。仓库会在构建时把 `targets/hiker-x9/target/linux/ramips/**` 合并进 OpenWrt 源码树，并把额外的 `hiker.mk` 接入 `rt305x.mk`。
 
 - **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、**`CONFIG_TARGET_MULTI_PROFILE=y`**、**`CONFIG_TARGET_PER_DEVICE_ROOTFS=y`**，以及多个 **`CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y`**（注意是 **`TARGET_DEVICE_…`** 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
-  - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`）
+  - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`。**实测参考**：刷写后 LAN 侧用 `ping-until-up` 计时至首次 **ping 通** 约 **680 s**（约 11 min，随环境与存储略有出入））
   - `hiker_x9-factory`（**官版首刷**：与 minimal 类似的精简栈，另含 **`hiker-x9-breed-autoflash`**；生成 **`factory.bin`**，**可由官版 / 原厂 Web 或恢复流程直接刷入**；刷机后见下文「红灯不再闪烁」再断电操作）
   - `hiker_x9-p910nd`
   - `hiker_x9-p910nd-wifi`
@@ -127,3 +127,5 @@
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
 
 **刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。**`.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错；探测使用 **.NET ICMP**（与 `ping` 一致），**不用** `Test-Connection -TimeoutSeconds`（PS 5.1 无该参数，会恒失败）。
+
+**实测记录（供预期）**：刷 **`hiker_x9-minimal`（黄金底 / mini）** 后，LAN 上首次 **ICMP ping 通** 约 **680 s**（同一脚本计时；非严格基准，冷启动、U 盘、包体积变化都会带来偏差）。
