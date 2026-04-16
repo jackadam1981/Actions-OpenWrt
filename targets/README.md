@@ -120,4 +120,6 @@
 
 ## 刷机与 bin 产物分析
 
+> **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。
+
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
