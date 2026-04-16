@@ -1,6 +1,9 @@
 #!/bin/sh
 # Hiker X9 minimal profile (wired)
 
+BOOT_S="$(cut -d. -f1 /proc/uptime 2>/dev/null)"
+[ -n "$BOOT_S" ] && logger -t hiker-mini "uci-defaults start at +${BOOT_S}s"
+
 mkdir -p /etc/rc.button
 cp -f /usr/share/hiker-x9-minimal/banner /etc/banner
 
@@ -12,9 +15,10 @@ uci set network.LanBackup.device=br-lan
 uci set network.LanBackup.ipaddr=192.168.100.1
 uci set network.LanBackup.netmask=255.255.255.0
 
-uci set network.LanUsb=interface
-uci set network.LanUsb.proto=dhcp
-uci set network.LanUsb.device=br-lan
+# Do not run a DHCP client on the same br-lan as the static LAN.
+# It adds boot noise and may delay netifd/rc completion on devices
+# where no upstream DHCP server is present.
+uci delete network.LanUsb 2>/dev/null
 
 idx=0
 lan_zone_idx=""
@@ -34,7 +38,6 @@ done
 if [ -n "$lan_zone_idx" ]; then
     uci del firewall.@zone[$lan_zone_idx].network 2>/dev/null
     uci add_list firewall.@zone[$lan_zone_idx].network=LanBackup 2>/dev/null
-    uci add_list firewall.@zone[$lan_zone_idx].network=LanUsb 2>/dev/null
 fi
 
 if [ -n "$wan_zone_idx" ]; then
@@ -61,5 +64,7 @@ fi
 uci commit network 2>/dev/null
 uci commit firewall 2>/dev/null
 uci commit system 2>/dev/null
+
+[ -n "$BOOT_S" ] && logger -t hiker-mini "uci-defaults done at +$(cut -d. -f1 /proc/uptime 2>/dev/null)s"
 
 exit 0
