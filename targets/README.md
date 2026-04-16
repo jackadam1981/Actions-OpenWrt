@@ -30,13 +30,14 @@
 
 - **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、**`CONFIG_TARGET_MULTI_PROFILE=y`**、**`CONFIG_TARGET_PER_DEVICE_ROOTFS=y`**，以及多个 **`CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y`**（注意是 **`TARGET_DEVICE_…`** 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
   - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`）
+  - `hiker_x9-factory`（**官版首刷**：与 minimal 类似的精简栈，另含 **`hiker-x9-breed-autoflash`**；生成 **`factory.bin`**，**可由官版 / 原厂 Web 或恢复流程直接刷入**；刷机后见下文「红灯不再闪烁」再断电操作）
   - `hiker_x9-p910nd`
   - `hiker_x9-p910nd-wifi`
   - `hiker_x9-virtualhere`
   - `hiker_x9-virtualhere-wifi`
   - `hiker_x9-both`（**p910nd + VirtualHere**，有线；与 `minimal` 相同 WiFi 用户态剔除策略）
   - `hiker_x9-both-wifi`（同上 + **AP WiFi 栈**）
-- **`package/network/services/`** 下与上述7 个 profile **一一对应** 的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`；另有共用的 **`virtualhere-usb-server`** 与 **`hiker-x9-reset-button`**（安装 `/etc/rc.button/reset`，七个 `*-defaults` 通过 `DEPENDS` 拉入）。
+- **`package/network/services/`** 下与上述 **7 个功能 profile** **一一对应** 的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`（**`hiker_x9-factory` 复用 `hiker-x9-minimal-defaults`**，无单独 `*-factory-defaults`）；另有共用的 **`virtualhere-usb-server`** 与 **`hiker-x9-reset-button`**（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
 
 ### hiker-x9：`DEVICE_PACKAGES` 一览（对照 `hiker.mk`）
@@ -83,8 +84,9 @@
 
 #### 读表提示
 
+- **`hiker_x9-factory`**：显式包与 **minimal** 同表思路，另加 **`hiker-x9-breed-autoflash`**，并定义 **`IMAGES += factory.bin`**；**官版首刷请选该 profile 产物 `factory.bin`**，勿与仅 `sysupgrade` 的 profile 混用在原厂恢复页上。
 - **`p910nd-wifi` / `virtualhere-wifi` / `both-wifi`**：`−wpad-basic-mbedtls` 与 **`+wpad-mbedtls`** 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
-- **每个 profile 对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile维护；**复位键脚本** 集中在 **`hiker-x9-reset-button`**；**`both*`** 仍不复用 **`virtualhere-*-defaults`**。
+- **每个功能 profile 对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile 维护；**复位键脚本** 集中在 **`hiker-x9-reset-button`**；**`both*`** 仍不复用 **`virtualhere-*-defaults`**。
 - **`minimal`**：保留 LuCI 与中文，**`+hiker-x9-minimal-defaults`**，且 **`−wpad-basic-mbedtls`**、**`−iw` / `−iwinfo`**；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
 - **`p910nd`（无 WiFi）**：未写 **`−wpad-*`**，即 **沿用该 target 默认的 wpad 组合**（若与后续精简策略冲突，可再单独加 `−` 行对齐 `minimal`）。
 
@@ -120,6 +122,6 @@
 
 ## 刷机与 bin 产物分析
 
-> **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。
+> **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。**从官版首刷**请使用 **`hiker_x9-factory` 的 `factory.bin`**（见上文与 [刷机文档](../docs/flashing-from-bin-and-source.md)）。
 
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。

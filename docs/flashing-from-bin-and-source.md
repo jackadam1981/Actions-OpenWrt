@@ -10,7 +10,7 @@
 
 | 目标目录 | OpenWrt target | 设备 / profile | 典型文件名模式 | 说明 |
 |----------|----------------|----------------|----------------|------|
-| [targets/hiker-x9](../targets/hiker-x9) | `ramips` / `rt305x` | `hiker_x9-minimal` 等 **7** 个 profile（含 `both` / `both-wifi`） | `openwrt-*-ramips-rt305x-hiker_x9-*-squashfs-sysupgrade.bin` | 自定义板，由 [hiker.mk](../targets/hiker-x9/target/linux/ramips/image/hiker.mk) 定义；`IMAGE_SIZE := 7872k`；未见额外 `IMAGES += factory.bin`，**一般仅 sysupgrade**。实机对照可确认**原厂固件本身也是 OpenWrt 衍生**（分区、打包思路往往更接近上游），但 **board 名、校验与 Web 恢复页封装仍可能与 CI 产物不一致**，首次刷入仍需单独验证。 |
+| [targets/hiker-x9](../targets/hiker-x9) | `ramips` / `rt305x` | `hiker_x9-minimal` 等 **7** 个功能 profile + **`hiker_x9-factory`**（共 **8** 个 Device） | `*-hiker_x9-*-squashfs-sysupgrade.bin`；**`hiker_x9-factory` 另产 `*-factory.bin`** | 自定义板，见 [hiker.mk](../targets/hiker-x9/target/linux/ramips/image/hiker.mk)；`IMAGE_SIZE := 7872k`。**从官版 / 原厂 Web 或恢复环境首次刷入**：请使用 **`hiker_x9-factory` 对应的 `factory.bin`**（本仓按实机流程验证，**官版可直接刷入该 factory**）。已运行本固件后，各功能 profile 仍以 **`sysupgrade.bin`** 升级为主。 |
 | [targets/dir-505](../targets/dir-505) | `ath79` / `generic` | `dlink_dir-505` | `*-dlink_dir-505-squashfs-sysupgrade.bin`、`*-dlink_dir-505-initramfs-kernel.bin` | 上游设备；`generic.mk` 中仅 `IMAGE_SIZE`，默认生成 sysupgrade / initramfs（见下文上游引用）。 |
 | [targets/x86-64](../targets/x86-64) | `x86` / `64` | `generic` | `*-ext4-combined.img.gz` 等 | 虚拟机 / PC；刷写方式为磁盘镜像或 `sysupgrade.tar`，与路由器 NOR SPI 流程不同。 |
 
@@ -29,7 +29,7 @@
 | 将 hiker.mk 接入 rt305x | [diy-part2.sh](../diy-part2.sh) 在存在 `target/linux/ramips/image/hiker.mk` 时向 `rt305x.mk` 追加 `include .../hiker.mk`。 |
 
 **原厂镜像**：实机可验证厂商固件为 **OpenWrt 衍生**（例如 rootfs 中出现典型 OpenWrt 布局或版本信息）。若厂商**开放 SSH**（或可自行开启），多数排查**不必依赖串口 / UART**：可在 shell 里用 `logread -f`、`dmesg`、`cat /proc/mtd`、`block info`、`uci show`、`ls /lib/upgrade`、`sysupgrade -h` 等对照分区与升级脚本约束；失败时日志往往在 `logread` 与 LuCI/命令行升级输出中即可复现。串口仍是 **U-Boot 阶段、内核早期 panic、SSH 不可达** 时的兜底手段。  
-上述便利**不**等同于「任意 OpenWrt 官方/本仓 `sysupgrade.bin` 可直接被原厂恢复页接受」。
+上述便利**不**等同于「任意 profile 的 `sysupgrade.bin` 都可被官版恢复页接受」。**例外**：本仓 **`hiker_x9-factory` 生成的 `factory.bin` 设计为供官版首刷**；其它 profile 的 `sysupgrade.bin` 仍按运行中系统升级使用。
 
 **从原厂 SSH 提取运行中设备树**：若内核启用了 OF（常见），根下会有 **`/proc/device-tree`**。可先 `ls /proc/device-tree`，并用 `hexdump -C /proc/device-tree/compatible | head` 或 `strings /proc/device-tree/compatible` 查看 `compatible`（属性多为 **小端 4 字节一单元的字符串**，直接 `cat` 可能带不可见字符）。  
 生成可读的 **`.dts` 草稿**（与源码树里的 `.dts` 不等价：无 `#include`/标签，phandle 为数字）任选其一：
@@ -81,7 +81,7 @@ TARGET_DEVICES += dlink_dir-505
 | 设备 | 首次安装 / 恢复 | OpenWrt 已运行后 |
 |------|-----------------|------------------|
 | **DIR-505** | 常见：**按住 Reset 上电**进入恢复页（PC 设静态 IP，如 `192.168.0.x`），浏览器访问 `http://192.168.0.1` 上传固件；不同硬件 revision（A1 / LA1 等）需确认与 `SUPPORTED_DEVICES` 一致。 | `sysupgrade` 或 LuCI 上传 `*-sysupgrade.bin`。 |
-| **Hiker X9** | 无官方 OpenWrt TechData 页时：Bootloader 侧仍可能依赖 **TFTP / 串口 / Web** 做「裸机」救砖。若**原厂系统为 OpenWrt 衍生且可 SSH**，优先在运行中的系统上追日志与约束（`/lib/upgrade`、`sysupgrade`、MTD），往往**无需 TTL串口**即可摸清镜像校验与分区要求；再对照 DTS 中的 **`denx,uimage` / 分区边界** 与 Web 恢复页行为。仍须核对 **设备标识、镜像大小与 OEM 头**，**不能**仅凭「同为 OpenWrt 系」假定 Web 页接受本仓生成的 `sysupgrade.bin`。 | 自编译 OpenWrt 运行后，使用对应 profile 的 `sysupgrade.bin`。 |
+| **Hiker X9** | **官版 / 原厂仍在时**：优先用 CI 产物里 **`hiker_x9-factory` 的 `factory.bin`** 按厂商 Web 或恢复页上传（**官版可直接刷入该 factory**）。救砖、无 Web 时仍可考虑 **TFTP / 串口** 等。若**原厂系统可 SSH**，也可在运行中对照 `/lib/upgrade`、`sysupgrade`、MTD 与 DTS 分区。其它 profile 的 **`sysupgrade.bin` 不宜假定**能被官版恢复页接受。 | 已在本固件上运行时，用对应 profile 的 **`sysupgrade.bin`** 升级。 |
 
 **原厂侧常无法仅从 OpenWrt bin 推断**：签名校验、OEM 头、恢复页只接受特定封装、大小限制等。除拆包与对照 Wiki 外，**在仍为原厂 OpenWrt 衍生系统且 SSH 可用时**，以运行中日志与升级脚本为主、串口为辅；仅当 **SSH 不可用或问题出在 Bootloader/极早期启动** 时，串口 log、FCC 资料或社区实刷记录才更显必要。
 
