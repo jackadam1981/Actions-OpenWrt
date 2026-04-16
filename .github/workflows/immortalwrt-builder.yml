@@ -1,8 +1,8 @@
 #
 # https://github.com/P3TERX/Actions-OpenWrt
 #
-# File: .github/workflows/lede-builder.yml
-# Description: Build coolsnowwolf/lede (LEDE) with GitHub Actions
+# File: .github/workflows/immortalwrt-builder.yml
+# Description: Build ImmortalWrt (immortalwrt/immortalwrt) with GitHub Actions
 #
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
@@ -10,20 +10,20 @@
 # See /LICENSE for more information.
 #
 
-name: LEDE Builder
+name: ImmortalWrt Builder
 
 on:
   workflow_dispatch:
   repository_dispatch:
     types:
-      - LEDE Source Update
+      - ImmortalWrt Source Update
 
 permissions:
   contents: write
   actions: write
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
@@ -142,7 +142,7 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        echo "LEDE build. Firmware assets below." > release.txt
+        echo "ImmortalWrt build. Firmware assets below." > release.txt
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release

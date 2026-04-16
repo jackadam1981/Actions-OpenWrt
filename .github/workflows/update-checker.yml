@@ -53,13 +53,13 @@ jobs:
           repository: ${{ github.repository }}
           event-type: OpenWrt Source Update
 
-  check-lede:
+  check-immortalwrt:
     runs-on: ubuntu-latest
     steps:
-      - name: Get commit hash (coolsnowwolf/lede)
+      - name: Get commit hash (immortalwrt/immortalwrt)
         id: getHash
         run: |
-          git clone --depth 1 https://github.com/coolsnowwolf/lede -b master .
+          git clone --depth 1 https://github.com/immortalwrt/immortalwrt -b master .
           echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Compare commit hash
@@ -67,22 +67,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .commitHash
-          key: commitHash_lede_${{ steps.getHash.outputs.commitHash }}
+          key: commitHash_immortalwrt_${{ steps.getHash.outputs.commitHash }}
 
       - name: Save new commit hash
         if: steps.cacheHash.outputs.cache-hit != 'true'
         run: echo "${{ steps.getHash.outputs.commitHash }}" | tee .commitHash
 
-      - name: Trigger LEDE Builder
+      - name: Trigger ImmortalWrt Builder
         if: steps.cacheHash.outputs.cache-hit != 'true'
         uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.REPO_DISPATCH_PAT }}
           repository: ${{ github.repository }}
-          event-type: LEDE Source Update
+          event-type: ImmortalWrt Source Update
 
   cleanup-runs:
-    needs: [check-openwrt, check-lede]
+    needs: [check-openwrt, check-immortalwrt]
     if: always()
     runs-on: ubuntu-latest
     permissions:
