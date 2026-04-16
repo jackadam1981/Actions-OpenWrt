@@ -4,6 +4,7 @@
 
 .DESCRIPTION
   Use after flash/reboot to see how long until the device answers ping. Default probe every 1s.
+  Uses .NET ICMP (same family as ping.exe), not Test-Connection — Windows PS 5.1 lacks -TimeoutSeconds on Test-Connection and would always fail.
 
 .PARAMETER Target
   IP or hostname (default 192.168.1.1, typical OpenWrt LAN).
@@ -14,6 +15,9 @@
 .PARAMETER MaxWaitSeconds
   Stop after this many seconds with exit code 1 (default 0 = unlimited). Ctrl+C always stops.
 
+.PARAMETER PingTimeoutMs
+  Per-probe ICMP timeout in milliseconds (default 2000).
+
 .EXAMPLE
   .\scripts\ping-until-up.ps1
   .\scripts\ping-until-up.ps1 -Target 192.168.6.1 -MaxWaitSeconds 300
@@ -21,14 +25,33 @@
 param(
     [string] $Target = "192.168.1.1",
     [double] $IntervalSeconds = 1.0,
-    [int] $MaxWaitSeconds = 0
+    [int] $MaxWaitSeconds = 0,
+    [int] $PingTimeoutMs = 2000
 )
 
-$ErrorActionPreference = "Stop"
+function Test-IcmpReachable {
+    param(
+        [string] $HostOrIp,
+        [int] $TimeoutMs
+    )
+    $pinger = $null
+    try {
+        $pinger = New-Object System.Net.NetworkInformation.Ping
+        $reply = $pinger.Send($HostOrIp, $TimeoutMs)
+        return ($reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
+    } catch {
+        return $false
+    } finally {
+        if ($null -ne $pinger) {
+            $pinger.Dispose()
+        }
+    }
+}
+
 $start = [Diagnostics.Stopwatch]::StartNew()
 
 $maxLabel = if ($MaxWaitSeconds -gt 0) { "${MaxWaitSeconds}s" } else { "unlimited" }
-Write-Host "Target: $Target | Interval: ${IntervalSeconds}s | Max wait: $maxLabel"
+Write-Host "Target: $Target | Interval: ${IntervalSeconds}s | Max wait: $maxLabel | ICMP timeout: ${PingTimeoutMs}ms"
 Write-Host "Press Ctrl+C to stop."
 Write-Host ""
 
@@ -39,11 +62,7 @@ while ($true) {
         exit 1
     }
 
-    try {
-        $ok = Test-Connection -ComputerName $Target -Count 1 -Quiet -TimeoutSeconds 2
-    } catch {
-        $ok = $false
-    }
+    $ok = Test-IcmpReachable -HostOrIp $Target -TimeoutMs $PingTimeoutMs
 
     if ($ok) {
         Write-Host ("[{0,6:F1}s] Ping OK: {1}" -f $elapsed.TotalSeconds, $Target)
