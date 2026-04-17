@@ -30,6 +30,22 @@ define Device/hiker_x9-minimal
 endef
 TARGET_DEVICES += hiker_x9-minimal
 
+define Device/hiker_x9-minimal-baseline
+	$(call Device/hiker_hiker-common)
+	DEVICE_MODEL := Hiker X9 Minimal (baseline)
+	DEVICE_DTS := rt5350_hiker_x9-minimal
+	SUPPORTED_DEVICES := hiker,x9-minimal-baseline hiker,x9 HIKER
+	# Baseline image for boot-time comparison: no custom defaults packages,
+	# so no /etc/uci-defaults tweaks and no per-device first-boot scripts.
+	DEVICE_PACKAGES := \
+		luci-light luci-theme-bootstrap \
+		luci-i18n-base-zh-cn \
+		$(HIKER_X9_STRIP) \
+		-wpad-basic-mbedtls \
+		-iw -iwinfo
+endef
+TARGET_DEVICES += hiker_x9-minimal-baseline
+
 define Device/hiker_x9-factory
 	$(call Device/hiker_hiker-common)
 	DEVICE_MODEL := Hiker X9 Factory
