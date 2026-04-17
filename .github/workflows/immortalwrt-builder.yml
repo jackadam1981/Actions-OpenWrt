@@ -103,7 +103,26 @@ jobs:
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
+      run: |
+        set -euo pipefail
+        cd openwrt
+        fix_feeds_bad_head_ref() {
+          local g
+          for g in feeds/*/.git; do
+            [ -e "$g" ] || continue
+            if [ -f "$g/refs/heads/HEAD" ]; then
+              rm -f "$g/refs/heads/HEAD"
+            fi
+          done
+        }
+        fix_feeds_bad_head_ref
+        if ./scripts/feeds update -a; then
+          exit 0
+        fi
+        echo "::warning::feeds update 首次失败，删除 feeds/packages 后重试一次"
+        rm -rf feeds/packages
+        fix_feeds_bad_head_ref
+        ./scripts/feeds update -a
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
