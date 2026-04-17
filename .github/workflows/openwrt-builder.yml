@@ -24,7 +24,7 @@ on:
           - self-hosted
         default: github-hosted
       baseline_only:
-        description: 'true=仅编 baseline（hiker_x9-minimal-baseline）；LAN 默认 192.168.1.1、无 dnsmasq，PC 需静态 IP 再测，勿用 192.168.100.1'
+        description: 'true=仅编 baseline；上游默认包栈+同 minimal DTS，无 hiker defaults；LAN 多为 192.168.1.1 常有 DHCP，勿用 192.168.100.1 测'
         type: boolean
         default: false
       only_targets:
