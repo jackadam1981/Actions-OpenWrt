@@ -39,7 +39,11 @@ on:
         type: boolean
         default: false
       only_targets:
-        description: '可选：仅编译这些 targets 子目录（逗号分隔，如 dir-505）。留空则编译除 _ 前缀外全部含 .config 的目录。与 baseline_only 互斥时请 baseline_only=false'
+        description: '可选：只编列出的目录（逗号分隔），例 dir-505,hiker-x9。留空则扫描 targets/ 下全部（仍跳过 _ 前缀）；此时可用 exclude_targets 排除 x86-64 等'
+        type: string
+        default: ''
+      exclude_targets:
+        description: '可选：only_targets 留空时跳过这些目录名（逗号分隔），例 x86-64。仅 workflow_dispatch 且 baseline_only=false 时生效'
         type: string
         default: ''
 
@@ -112,11 +116,25 @@ jobs:
         if [ -d "$TARGETS_DIR" ] && [ -n "$(ls -A $TARGETS_DIR 2>/dev/null)" ]; then
           configs="["
           first=1
+          EXCLUDE_RAW=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            EXCLUDE_RAW="${{ inputs.exclude_targets }}"
+          fi
           for t in $(ls -A "$TARGETS_DIR" 2>/dev/null); do
             case "$t" in
               _*) continue ;;
             esac
             [ -f "$TARGETS_DIR/$t/.config" ] || continue
+            if [ -n "$EXCLUDE_RAW" ]; then
+              skip=0
+              IFS=',' read -ra EXA <<< "$EXCLUDE_RAW"
+              for ex in "${EXA[@]}"; do
+                ex="$(echo "$ex" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+                [ -z "$ex" ] && continue
+                [ "$ex" = "$t" ] && skip=1 && break
+              done
+              [ "$skip" -eq 1 ] && continue
+            fi
             [ "$first" -eq 0 ] && configs="$configs,"
             configs="$configs\"$TARGETS_DIR/$t/.config\""
             first=0
