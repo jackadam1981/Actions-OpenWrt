@@ -5,6 +5,7 @@
 .DESCRIPTION
   1) 先确认当前能 ping 通；2) SSH 执行 reboot；3) 等待 InitialGraceSeconds（默认 30s，因设备未必立刻重启）；4) 再开始 ICMP 判定连通。
   汇报：SSH 下发到首次 ping 通总时长；宽限期后至 ping 通时长；若宽限后曾观测掉线再恢复，则汇报掉线→恢复。
+  可选 -ProbeTcpPortAfterPing 80：ICMP 恢复后再测 TCP（Web 常晚于 ping）。
 
 .PARAMETER Target
   设备 LAN IP（baseline 多为 192.168.1.1；minimal 多为 192.168.100.1）。
@@ -30,6 +31,15 @@
 .PARAMETER InitialGraceSeconds
   SSH 发出 reboot 后，先等待再开始 ICMP 判定（默认 30；发令后设备常延迟才真正重启）。
 
+.PARAMETER ProbeTcpPortAfterPing
+  大于 0 时，在 ICMP 恢复后再探测该 TCP 端口（常用 80）。0 不测。
+
+.PARAMETER MaxWaitTcpSeconds
+  ICMP 恢复后等待 TCP 打开的最长时间（秒，0 不限制）。
+
+.PARAMETER TcpConnectTimeoutMs
+  单次 TCP 连接超时（毫秒）。
+
 .EXAMPLE
   .\scripts\measure-reboot-recovery.ps1 -Target 192.168.1.1 -SshKey "$env:USERPROFILE\.ssh\hiker_x9_cursor"
 #>
@@ -41,7 +51,10 @@ param(
     [int] $PingTimeoutMs = 1000,
     [int] $MaxWaitSeconds = 600,
     [int] $MinDownProbes = 2,
-    [int] $InitialGraceSeconds = 30
+    [int] $InitialGraceSeconds = 30,
+    [int] $ProbeTcpPortAfterPing = 0,
+    [int] $MaxWaitTcpSeconds = 600,
+    [int] $TcpConnectTimeoutMs = 2000
 )
 
 Set-StrictMode -Version 3
@@ -58,6 +71,34 @@ function Test-IcmpReachable {
         return $false
     } finally {
         if ($null -ne $pinger) { $pinger.Dispose() }
+    }
+}
+
+function Test-TcpPortOpen {
+    param(
+        [string] $HostOrIp,
+        [int] $Port,
+        [int] $ConnectTimeoutMs
+    )
+    if ($Port -le 0 -or $Port -gt 65535) { return $false }
+    $client = $null
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $iar = $client.BeginConnect($HostOrIp, $Port, $null, $null)
+        if (-not $iar.AsyncWaitHandle.WaitOne($ConnectTimeoutMs)) {
+            return $false
+        }
+        $client.EndConnect($iar)
+        return $client.Connected
+    } catch {
+        return $false
+    } finally {
+        if ($null -ne $client) {
+            try {
+                if ($client.Connected) { $client.Close() }
+            } catch { }
+            $client.Dispose()
+        }
     }
 }
 
@@ -138,19 +179,47 @@ while ($true) {
     Start-Sleep -Milliseconds $sleepMs
 }
 
-$totalSec = $swTotal.Elapsed.TotalSeconds
+$icmpTotalSec = $swTotal.Elapsed.TotalSeconds
 $postGraceToUp = ($firstUpAfterDownAt - $tGraceEnd).TotalSeconds
+
+$durTcpAfterIcmpSec = $null
+$totalSshToTcpSec = $null
+if ($ProbeTcpPortAfterPing -gt 0) {
+    $maxTcpLabel = if ($MaxWaitTcpSeconds -gt 0) { "${MaxWaitTcpSeconds}s after ICMP OK" } else { "unlimited after ICMP OK" }
+    Write-Host "Probing TCP port ${ProbeTcpPortAfterPing} (max wait $maxTcpLabel, connect timeout ${TcpConnectTimeoutMs}ms)..."
+    $swTcp = [Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
+        if ($MaxWaitTcpSeconds -gt 0 -and $swTcp.Elapsed.TotalSeconds -ge $MaxWaitTcpSeconds) {
+            Write-Error "TIMEOUT: TCP port ${ProbeTcpPortAfterPing} did not open within ${MaxWaitTcpSeconds}s after ICMP recovery."
+            exit 1
+        }
+        if (Test-TcpPortOpen -HostOrIp $Target -Port $ProbeTcpPortAfterPing -ConnectTimeoutMs $TcpConnectTimeoutMs) {
+            $durTcpAfterIcmpSec = $swTcp.Elapsed.TotalSeconds
+            $totalSshToTcpSec = $swTotal.Elapsed.TotalSeconds
+            Write-Host ("TCP port {0} open {1:F1}s after ICMP recovery ({2:F1}s from SSH reboot)." -f $ProbeTcpPortAfterPing, $durTcpAfterIcmpSec, $totalSshToTcpSec)
+            break
+        }
+        Write-Host ("[{0,6:F1}s after ICMP] TCP {1} not ready..." -f $swTcp.Elapsed.TotalSeconds, $ProbeTcpPortAfterPing)
+        $sleepMs = [int]([Math]::Max(50, [Math]::Round($IntervalSeconds * 1000.0)))
+        Start-Sleep -Milliseconds $sleepMs
+    }
+}
+
 Write-Host ""
 Write-Host "========== REBOOT RECOVERY REPORT =========="
 Write-Host ("Target:              {0}" -f $Target)
 Write-Host ("SSH key:             {0}" -f $SshKey)
 Write-Host ("Initial grace:       {0} s   (no success judgment during this window)" -f $InitialGraceSeconds)
-Write-Host ("Total (SSH->ping OK): {0:F1} s   (from SSH reboot to first ping OK after grace)" -f $totalSec)
+Write-Host ("Total (SSH->ping OK): {0:F1} s   (from SSH reboot to first ping OK after grace)" -f $icmpTotalSec)
 Write-Host ("After grace->ping OK: {0:F1} s   (from end of grace to first ping OK)" -f $postGraceToUp)
 if ($null -ne $firstDownAt -and $null -ne $firstUpAfterDownAt) {
     $pure = ($firstUpAfterDownAt - $firstDownAt).TotalSeconds
     Write-Host ("Down -> up:          {0:F1} s   (first sustained ICMP fail after grace -> first ICMP OK)" -f $pure)
     Write-Host ("First ICMP down at:  {0:F1} s after SSH reboot" -f $firstDownAt.TotalSeconds)
+}
+if ($null -ne $durTcpAfterIcmpSec -and $null -ne $totalSshToTcpSec) {
+    Write-Host ("ICMP -> TCP {0}:     {1:F1} s   (after first post-recovery ICMP OK)" -f $ProbeTcpPortAfterPing, $durTcpAfterIcmpSec)
+    Write-Host ("Total (SSH->TCP {0}): {1:F1} s" -f $ProbeTcpPortAfterPing, $totalSshToTcpSec)
 }
 Write-Host "============================================"
 

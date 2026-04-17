@@ -5,6 +5,7 @@
 .DESCRIPTION
   sysupgrade 会话结束（SSH 常断开）后先等待 InitialGraceSeconds：此窗口**不表示** NAND 刷写已完成，仅避免立刻用 ICMP 误判。
   宽限结束后与 measure-reboot-recovery 相同：须先观测连续 MinDownProbes 次 ICMP 失败（掉线），再等到 ping 通，才记为「可 ping 恢复」。ICMP 恢复仍**不等于**镜像写入完成，实机请以指示灯等为准。
+  可选 -ProbeTcpPortAfterPing 80：在 ICMP 恢复后再测 TCP 80（LuCI/uHTTPd 常晚于 ping）。
   仅校验镜像用 -TestOnly；只上传刷写、不测时用 -NoWaitForPing。
 
 .PARAMETER Image
@@ -58,6 +59,15 @@
 .PARAMETER SkipPingPrecheck
   跳过刷写前 ICMP 预检。
 
+.PARAMETER ProbeTcpPortAfterPing
+  大于 0 时，在「掉线后再 ping 通」之后继续探测该 TCP 端口（常用 80 = HTTP）。0 表示不测。
+
+.PARAMETER MaxWaitTcpSeconds
+  ICMP 已恢复后，等待 TCP 端口打开的最长时间（秒，0 不限制）。
+
+.PARAMETER TcpConnectTimeoutMs
+  单次 TCP 连接尝试超时（毫秒）。
+
 .EXAMPLE
   .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.100.1 -Image D:\build\*-squashfs-sysupgrade.bin
 
@@ -86,6 +96,9 @@ param(
     [int] $PingTimeoutMs = 2000,
     [int] $MaxWaitSeconds = 600,
     [int] $MinDownProbes = 2,
+    [int] $ProbeTcpPortAfterPing = 0,
+    [int] $MaxWaitTcpSeconds = 600,
+    [int] $TcpConnectTimeoutMs = 2000,
     [switch] $SkipPingPrecheck
 )
 
@@ -103,6 +116,34 @@ function Test-IcmpReachable {
         return $false
     } finally {
         if ($null -ne $pinger) { $pinger.Dispose() }
+    }
+}
+
+function Test-TcpPortOpen {
+    param(
+        [string] $HostOrIp,
+        [int] $Port,
+        [int] $ConnectTimeoutMs
+    )
+    if ($Port -le 0 -or $Port -gt 65535) { return $false }
+    $client = $null
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $iar = $client.BeginConnect($HostOrIp, $Port, $null, $null)
+        if (-not $iar.AsyncWaitHandle.WaitOne($ConnectTimeoutMs)) {
+            return $false
+        }
+        $client.EndConnect($iar)
+        return $client.Connected
+    } catch {
+        return $false
+    } finally {
+        if ($null -ne $client) {
+            try {
+                if ($client.Connected) { $client.Close() }
+            } catch { }
+            $client.Dispose()
+        }
     }
 }
 
@@ -318,8 +359,31 @@ while ($true) {
     Start-Sleep -Milliseconds $sleepMs
 }
 
-$durTotal = $swTotal.Elapsed.TotalSeconds
+$icmpTotalSec = $swTotal.Elapsed.TotalSeconds
 $postGraceToUp = ($firstUpAfterDownAt - $tGraceEnd).TotalSeconds
+
+$durTcpAfterIcmpSec = $null
+$totalScpToTcpSec = $null
+if ($ProbeTcpPortAfterPing -gt 0) {
+    $maxTcpLabel = if ($MaxWaitTcpSeconds -gt 0) { "${MaxWaitTcpSeconds}s after ICMP OK" } else { "unlimited after ICMP OK" }
+    Write-Host "Probing TCP port ${ProbeTcpPortAfterPing} (HTTP often after ICMP; max wait $maxTcpLabel, connect timeout ${TcpConnectTimeoutMs}ms)..."
+    $swTcp = [Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
+        if ($MaxWaitTcpSeconds -gt 0 -and $swTcp.Elapsed.TotalSeconds -ge $MaxWaitTcpSeconds) {
+            Write-Error "TIMEOUT: TCP port ${ProbeTcpPortAfterPing} did not accept connections within ${MaxWaitTcpSeconds}s after ICMP recovery."
+            exit 1
+        }
+        if (Test-TcpPortOpen -HostOrIp $Target -Port $ProbeTcpPortAfterPing -ConnectTimeoutMs $TcpConnectTimeoutMs) {
+            $durTcpAfterIcmpSec = $swTcp.Elapsed.TotalSeconds
+            $totalScpToTcpSec = $swTotal.Elapsed.TotalSeconds
+            Write-Host ("TCP port {0} open {1:F1}s after ICMP recovery ({2:F1}s from SCP start)." -f $ProbeTcpPortAfterPing, $durTcpAfterIcmpSec, $totalScpToTcpSec)
+            break
+        }
+        Write-Host ("[{0,6:F1}s after ICMP] TCP {1} not ready..." -f $swTcp.Elapsed.TotalSeconds, $ProbeTcpPortAfterPing)
+        $sleepMs = [int]([Math]::Max(50, [Math]::Round($IntervalSeconds * 1000.0)))
+        Start-Sleep -Milliseconds $sleepMs
+    }
+}
 
 Write-Host ""
 Write-Host "========== SYSUPGRADE RECOVERY REPORT =========="
@@ -333,12 +397,16 @@ if ($PlinkNoPassword) {
 Write-Host ("SCP upload:             {0:F1} s" -f $durScp.TotalSeconds)
 Write-Host ("SSH sysupgrade:         {0:F1} s" -f $durSsh.TotalSeconds)
 Write-Host ("Initial grace:          {0} s   (after command/disconnect; not flash-complete)" -f $InitialGraceSeconds)
-Write-Host ("Total (SCP->ping OK):   {0:F1} s   (after grace, first ping OK following observed down)" -f $durTotal)
+Write-Host ("Total (SCP->ping OK):   {0:F1} s   (after grace, first ping OK following observed down)" -f $icmpTotalSec)
 Write-Host ("After grace->ping OK:   {0:F1} s   (grace end -> first ping OK after down)" -f $postGraceToUp)
 if ($null -ne $firstDownAt -and $null -ne $firstUpAfterDownAt) {
     $pure = ($firstUpAfterDownAt - $firstDownAt).TotalSeconds
     Write-Host ("Down -> up:             {0:F1} s   (sustained ICMP fail after grace -> first ICMP OK)" -f $pure)
     Write-Host ("First ICMP down at:     {0:F1} s from SCP start" -f $firstDownAt.TotalSeconds)
+}
+if ($null -ne $durTcpAfterIcmpSec -and $null -ne $totalScpToTcpSec) {
+    Write-Host ("ICMP -> TCP {0}:       {1:F1} s   (after first post-recovery ICMP OK)" -f $ProbeTcpPortAfterPing, $durTcpAfterIcmpSec)
+    Write-Host ("Total (SCP->TCP {0}):   {1:F1} s" -f $ProbeTcpPortAfterPing, $totalScpToTcpSec)
 }
 Write-Host ("Note:                   ICMP recovery is not proof sysupgrade NAND completed; use LED / serial if unsure.")
 Write-Host "================================================"
