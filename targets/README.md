@@ -138,4 +138,7 @@
 
 **刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。**`.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错；探测使用 **.NET ICMP**（与 `ping` 一致），**不用** `Test-Connection -TimeoutSeconds`（PS 5.1 无该参数，会恒失败）。
 
-**实测记录（供预期）**：刷 **`hiker_x9-minimal`（黄金底 / mini）** 后，LAN 上首次 **ICMP ping 通** 约 **680 s**（同一脚本计时；非严格基准，冷启动、U 盘、包体积变化都会带来偏差）。
+**实测记录（供预期）**：
+
+- **D-Link DIR-505**：经 **U-Boot / 恢复页** 刷 **OpenWrt 官方 factory** 后，首次 **ICMP ping 通** 约 **86.6 s**（可粗预期 **约 90 s 以内**；硬件 revision、镜像与网络环境会带来偏差）。
+- **Hiker X9**：刷 **`hiker_x9-minimal`（黄金底 / mini）** 后，LAN 上首次 **ICMP ping 通** 约 **680 s**（同一脚本计时；非严格基准，冷启动、U 盘、包体积变化都会带来偏差）。

@@ -70,6 +70,8 @@ TARGET_DEVICES += dlink_dir-505
 
 未在该片段中单独声明 `factory.bin` 时，**首次从原厂刷机**常依赖 Wiki 所述的 **D-Link Recovery（上传特定格式固件）** 或 **initramfs + TFTP/UART**，与当前生成的 `sysupgrade.bin` 是否同一文件需对照 Wiki 与历史 `ar71xx`/`ath79` 镜像说明。
 
+**本仓实测（单点记录，供粗预期）**：经 **U-Boot / D-Link Recovery** 刷入 **OpenWrt 官方 factory** 包后，以本机首次 **ICMP ping 通**（刷写完成、PC 接 LAN 后按常规地址探测）计时约 **86.6 s**，同条件下可粗预期 **约 90 s 以内**（硬件 revision、镜像版本、上联与网线因素会带来偏差）。
+
 ### 2.3 x86_64
 
 关注 `target/linux/x86/image/Makefile` 与 `CONFIG_TARGET_ROOTFS_EXT4FS` 等选项；刷机为磁盘/IMG，与嵌入式 NOR 流程不同。
