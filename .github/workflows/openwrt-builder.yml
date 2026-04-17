@@ -39,9 +39,9 @@ on:
         type: boolean
         default: false
       only_targets:
-        description: '可选：只编列出的目录（逗号分隔），例 dir-505,hiker-x9。留空则扫描 targets/ 下全部（仍跳过 _ 前缀）；此时可用 exclude_targets 排除 x86-64 等'
+        description: '只编列出的目录（逗号分隔）。默认 dir-505,hiker-x9；清空则扫描 targets/ 下全部（仍跳过 _ 前缀），可配合 exclude_targets'
         type: string
-        default: ''
+        default: 'dir-505,hiker-x9'
       exclude_targets:
         description: '可选：only_targets 留空时跳过这些目录名（逗号分隔），例 x86-64。仅 workflow_dispatch 且 baseline_only=false 时生效'
         type: string
