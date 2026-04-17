@@ -1,6 +1,6 @@
 # `_hiker-x9-baseline-only`（workflow：`baseline_only`）
 
-与 **`hiker_x9-minimal`** 共用 **同一 DTS**（`rt5350_hiker_x9-minimal`），但 **`hiker_x9-minimal-baseline` 不写 `DEVICE_PACKAGES`**：镜像包集合 **尽量等于 ramips/rt305x 路由器上游默认**（另含该 subtarget 的 `DEFAULT_PACKAGES`，如 `wpad-basic-mbedtls` 等），**不**再像旧版 baseline 那样剔除 `dnsmasq` / `odhcp`、不强行装 LuCI、也不跑 `hiker-x9-minimal-defaults`。
+与 **`hiker_x9-minimal`** 共用 **同一 DTS**（`rt5350_hiker_x9-minimal`），但 **`hiker_x9-minimal-baseline` 不写 `DEVICE_PACKAGES`**：与 OpenWrt 上游多数 **`SOC := rt5350`** 路由条目相同策略，见 **`targets/README.md`** 一节「上游 OpenWrt 里 `SOC := rt5350` 的常见写法」及官方 [`rt305x.mk`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)。
 
 用途：对比 **「无本仓 uci-defaults、无自定义 strip」** 下的启动行为；一般比 `minimal` **更快拿到 DHCP / ping 通**（若仍极慢，再查刷机方式或硬件）。
 
