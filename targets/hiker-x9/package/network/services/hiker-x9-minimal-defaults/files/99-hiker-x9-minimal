@@ -7,6 +7,12 @@ BOOT_S="$(cut -d. -f1 /proc/uptime 2>/dev/null)"
 mkdir -p /etc/rc.button
 cp -f /usr/share/hiker-x9-minimal/banner /etc/banner
 
+REV=""
+if [ -f /etc/openwrt_release ]; then # shellcheck disable=SC1091
+    . /etc/openwrt_release
+    REV="${DISTRIB_REVISION:-}"
+fi
+
 # Enable boot metrics logger (every boot).
 [ -x /etc/init.d/hiker-boot-metrics ] && /etc/init.d/hiker-boot-metrics enable 2>/dev/null
 
@@ -49,7 +55,22 @@ if [ -n "$wan_zone_idx" ]; then
     uci add_list firewall.@zone[$wan_zone_idx].network=wan6 2>/dev/null
 fi
 
-uci set system.@system[0].hostname=HikerMinimal 2>/dev/null
+if [ -n "$REV" ]; then
+    REV_HOST="$(printf '%s' "$REV" | tr -c 'A-Za-z0-9-' '-')"
+    uci set system.@system[0].hostname="HikerMinimal-${REV_HOST}" 2>/dev/null
+
+    # LuCI "Model" comes from /etc/board.json (display name), not DTS model string.
+    if [ -f /etc/board.json ]; then
+        sed -i "s/\"name\": \"Hiker X9 Minimal\"/\"name\": \"Hiker X9 Minimal (${REV})\"/" /etc/board.json 2>/dev/null
+    fi
+
+    {
+        echo ""
+        echo " Build : ${REV}"
+    } >> /etc/banner
+else
+    uci set system.@system[0].hostname=HikerMinimal 2>/dev/null
+fi
 uci set system.@system[0].zonename=Asia/Shanghai 2>/dev/null
 uci set system.@system[0].timezone=CST-8 2>/dev/null
 
