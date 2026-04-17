@@ -35,7 +35,7 @@ on:
           - self-hosted
         default: github-hosted
       baseline_only:
-        description: 'If true, only build targets/_hiker-x9-baseline-only/.config (hiker_x9-minimal-baseline)'
+        description: 'true=仅编 baseline（hiker_x9-minimal-baseline）；LAN 默认 192.168.1.1、无 dnsmasq，PC 需静态 IP 再测，勿用 192.168.100.1'
         type: boolean
         default: false
 

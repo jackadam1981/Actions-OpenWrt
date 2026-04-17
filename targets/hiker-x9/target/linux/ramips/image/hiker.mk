@@ -35,6 +35,9 @@ define Device/hiker_x9-minimal-baseline
 	DEVICE_MODEL := Hiker X9 Minimal (baseline)
 	DEVICE_DTS := rt5350_hiker_x9-minimal
 	SUPPORTED_DEVICES := hiker,x9-minimal-baseline hiker,x9 HIKER
+	# Baseline: no hiker-x9-minimal-defaults → OpenWrt 默认 LAN（一般为 192.168.1.1），
+	# 不会像 minimal 那样改成 192.168.100.1。HIKER_X9_STRIP 含 -dnsmasq → 无 DHCP，
+	# 测试机请设静态 IP（如 192.168.1.10/24）再 ping / 访问 LuCI。
 	# Baseline image for boot-time comparison: no custom defaults packages,
 	# so no /etc/uci-defaults tweaks and no per-device first-boot scripts.
 	DEVICE_PACKAGES := \
