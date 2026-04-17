@@ -56,7 +56,7 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-  CCACHE_DIR: /workdir/.ccache
+  # CCACHE_DIR is set in "Prepare workdir" (must match WORKDIR).
   CCACHE_COMPRESS: 'true'
   CCACHE_MAXSIZE: 2G
   # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
@@ -139,12 +139,26 @@ jobs:
 
     - name: Prepare workdir (all runners)
       run: |
-        sudo timedatectl set-timezone "$TZ" || true
-        sudo mkdir -p /workdir
-        sudo chown "$USER:$GROUPS" /workdir
+        set -euo pipefail
+        # GitHub-hosted: passwordless sudo. Self-hosted often has no TTY / no NOPASSWD — use a user-writable tree.
+        if [ "$(id -u)" -eq 0 ]; then
+          mkdir -p /workdir
+          WD=/workdir
+        elif sudo -n true 2>/dev/null; then
+          sudo timedatectl set-timezone "$TZ" || true
+          sudo mkdir -p /workdir
+          sudo chown "$USER:$(id -gn)" /workdir
+          WD=/workdir
+        else
+          WD="${RUNNER_WORKSPACE:-$HOME}/openwrt-build-workdir"
+          mkdir -p "$WD"
+          timedatectl set-timezone "$TZ" 2>/dev/null || true
+        fi
+        echo "WORKDIR=$WD" >> "$GITHUB_ENV"
+        echo "CCACHE_DIR=$WD/.ccache" >> "$GITHUB_ENV"
 
     - name: Clone or update source code
-      working-directory: /workdir
+      working-directory: ${{ env.WORKDIR }}
       run: |
         df -hT $PWD
         if [ -d openwrt/.git ]; then
@@ -156,14 +170,14 @@ jobs:
           rm -rf openwrt
           git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" openwrt
         fi
-        ln -sf /workdir/openwrt "$GITHUB_WORKSPACE/openwrt"
+        ln -sf "$WORKDIR/openwrt" "$GITHUB_WORKSPACE/openwrt"
 
     - name: Restore OpenWrt dl + ccache
       uses: actions/cache/restore@v4
       with:
         path: |
-          /workdir/openwrt/dl
-          /workdir/.ccache
+          ${{ env.WORKDIR }}/openwrt/dl
+          ${{ env.WORKDIR }}/.ccache
         key: openwrt-${{ env.CONFIG_SLUG }}-${{ hashFiles(matrix.config, 'feeds.conf.default', 'diy-part1.sh', 'diy-part2.sh') }}-${{ github.run_id }}-${{ strategy.job-index }}
         restore-keys: |
           openwrt-${{ env.CONFIG_SLUG }}-${{ hashFiles(matrix.config, 'feeds.conf.default', 'diy-part1.sh', 'diy-part2.sh') }}-
@@ -225,8 +239,8 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: |
-          /workdir/openwrt/dl
-          /workdir/.ccache
+          ${{ env.WORKDIR }}/openwrt/dl
+          ${{ env.WORKDIR }}/.ccache
         key: openwrt-${{ env.CONFIG_SLUG }}-${{ hashFiles(matrix.config, 'feeds.conf.default', 'diy-part1.sh', 'diy-part2.sh') }}-${{ github.run_id }}-${{ strategy.job-index }}
 
     - name: Check space usage
