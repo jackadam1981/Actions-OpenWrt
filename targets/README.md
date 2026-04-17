@@ -90,7 +90,7 @@
 - **`minimal`**：保留 LuCI 与中文，**`+hiker-x9-minimal-defaults`**，且 **`−wpad-basic-mbedtls`**、**`−iw` / `−iwinfo`**；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
 - **`p910nd`（无 WiFi）**：未写 **`−wpad-*`**，即 **沿用该 target 默认的 wpad 组合**（若与后续精简策略冲突，可再单独加 `−` 行对齐 `minimal`）。
 
-**仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 仍会作为 feed 加入，可继续复用其中已有的设备思路；但本仓已经支持在 `targets/hiker-x9/` 下直接维护本地 overlay 和自定义 package（例如 `virtualhere-usb-server`）。
+**参考仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 仍可查阅历史设备思路；**CI 已不再通过 feed 引入**。增硬件与机型请只在 `targets/<name>/` 下维护 overlay（`target/`、`package/`、`etc/`），由 `diy-part2.sh` 合并进 OpenWrt 源码树。
 
 ---
 
