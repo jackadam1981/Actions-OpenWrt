@@ -16,7 +16,13 @@
   设备临时路径（默认 /tmp/sysupgrade.bin）。
 
 .PARAMETER SshKey / SshUser
-  SSH 认证。
+  SSH 认证（OpenSSH 时用 -i 私钥；需 BatchMode，空密码不可用）。
+
+.PARAMETER PlinkNoPassword
+  使用 PuTTY 的 pscp/plink，以空密码非交互登录（OpenWrt 默认 root 无密码时常用）。
+
+.PARAMETER PuttyDirectory
+  含 pscp.exe、plink.exe 的目录（优先查找）。默认 D:\\MyProgram\\putty；其它机器可传空字符串 "" 仅用 PATH / Program Files。
 
 .PARAMETER NoKeepConfig
   设备上 sysupgrade -n。
@@ -50,6 +56,9 @@
 
 .EXAMPLE
   .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.100.1 -Image .\firmware.bin -NoKeepConfig -InitialGraceSeconds 45
+
+.EXAMPLE
+  .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.1.1 -Image .\Firmware\sysupgrade.bin -PlinkNoPassword -PuttyDirectory "D:\MyProgram\putty"
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -58,6 +67,8 @@ param(
     [string] $RemotePath = "/tmp/sysupgrade.bin",
     [string] $SshKey = $(Join-Path $env:USERPROFILE ".ssh\hiker_x9_cursor"),
     [string] $SshUser = "root",
+    [switch] $PlinkNoPassword,
+    [string] $PuttyDirectory = "D:\MyProgram\putty",
     [switch] $NoKeepConfig,
     [switch] $TestOnly,
     [switch] $ForceImage,
@@ -86,8 +97,43 @@ function Test-IcmpReachable {
     }
 }
 
-if (-not (Test-Path -LiteralPath $SshKey)) {
-    Write-Error "SSH key not found: $SshKey"
+function Find-PuttyTool {
+    param(
+        [Parameter(Mandatory = $true)][string] $ExeName,
+        [string] $PreferredDirectory = ""
+    )
+    if (-not [string]::IsNullOrWhiteSpace($PreferredDirectory)) {
+        $d = $PreferredDirectory.Trim().TrimEnd('\', '/')
+        if ($d.Length -gt 0) {
+            $p = Join-Path $d $ExeName
+            if (Test-Path -LiteralPath $p) {
+                return (Resolve-Path -LiteralPath $p).Path
+            }
+        }
+    }
+    $cmd = Get-Command $ExeName -ErrorAction SilentlyContinue
+    if ($null -ne $cmd -and $cmd.Source) { return $cmd.Source }
+    foreach ($dir in @(
+            (Join-Path $env:ProgramFiles "PuTTY"),
+            (Join-Path ${env:ProgramFiles(x86)} "PuTTY")
+        )) {
+        $p = Join-Path $dir $ExeName
+        if (Test-Path -LiteralPath $p) { return (Resolve-Path -LiteralPath $p).Path }
+    }
+    return $null
+}
+
+$plinkExe = $null
+$pscpExe = $null
+if ($PlinkNoPassword) {
+    $pscpExe = Find-PuttyTool "pscp.exe" $PuttyDirectory
+    $plinkExe = Find-PuttyTool "plink.exe" $PuttyDirectory
+    if ($null -eq $pscpExe -or $null -eq $plinkExe) {
+        Write-Error "PlinkNoPassword requires pscp.exe and plink.exe. Tried -PuttyDirectory '$PuttyDirectory', then PATH and Program Files\PuTTY. pscp=$pscpExe plink=$plinkExe"
+        exit 2
+    }
+} elseif (-not (Test-Path -LiteralPath $SshKey)) {
+    Write-Error "SSH key not found: $SshKey (use -PlinkNoPassword for root with empty password via PuTTY)"
     exit 2
 }
 
@@ -112,28 +158,44 @@ if (-not $SkipPingPrecheck) {
     Write-Host "Pre-check OK."
 }
 
-$sshBase = @(
-    "-i", $SshKey,
-    "-o", "BatchMode=yes",
-    "-o", "StrictHostKeyChecking=accept-new",
-    "-o", "ConnectTimeout=30",
-    "-o", "ConnectionAttempts=1"
-)
+$sshBase = if ($PlinkNoPassword) {
+    @()
+} else {
+    @(
+        "-i", $SshKey,
+        "-o", "BatchMode=yes",
+        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", "ConnectTimeout=30",
+        "-o", "ConnectionAttempts=1"
+    )
+}
 
 $swTotal = [Diagnostics.Stopwatch]::StartNew()
 
-$scpArgs = $sshBase + @(
-    "-C",
-    $imageFull,
-    "${SshUser}@${Target}:${RemotePath}"
-)
-
-Write-Host "Uploading via SCP -> ${SshUser}@${Target}:${RemotePath}"
+Write-Host "Uploading -> ${SshUser}@${Target}:${RemotePath}"
 $swScp = [Diagnostics.Stopwatch]::StartNew()
-& scp.exe @scpArgs
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "SCP failed (exit $LASTEXITCODE)."
-    exit 1
+if ($PlinkNoPassword) {
+    $pscpArgs = @(
+        "-scp", "-batch", "-pw", "",
+        $imageFull,
+        "${SshUser}@${Target}:${RemotePath}"
+    )
+    & $pscpExe @pscpArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "pscp failed (exit $LASTEXITCODE). If host key not cached, run once: plink ${SshUser}@${Target}"
+        exit 1
+    }
+} else {
+    $scpArgs = $sshBase + @(
+        "-C",
+        $imageFull,
+        "${SshUser}@${Target}:${RemotePath}"
+    )
+    & scp.exe @scpArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "SCP failed (exit $LASTEXITCODE)."
+        exit 1
+    }
 }
 $durScp = $swScp.Elapsed
 Write-Host ("Upload finished in {0:F1}s." -f $durScp.TotalSeconds)
@@ -145,16 +207,20 @@ if ($ForceImage) { $remoteArgs += "-F" }
 $remoteArgs += $RemotePath
 $remoteCmd = "sysupgrade " + ($remoteArgs -join " ")
 
-$sshArgs = $sshBase + @(
-    "${SshUser}@${Target}",
-    $remoteCmd
-)
-
 Write-Host "Running on device: $remoteCmd"
 $swSsh = [Diagnostics.Stopwatch]::StartNew()
 $sshOut = $null
 try {
-    $sshOut = & ssh.exe @sshArgs 2>&1
+    if ($PlinkNoPassword) {
+        $plinkArgs = @("-ssh", "-batch", "-pw", "", "${SshUser}@${Target}", $remoteCmd)
+        $sshOut = & $plinkExe @plinkArgs 2>&1
+    } else {
+        $sshArgs = $sshBase + @(
+            "${SshUser}@${Target}",
+            $remoteCmd
+        )
+        $sshOut = & ssh.exe @sshArgs 2>&1
+    }
 } catch {
     Write-Host "(SSH session ended: $($_.Exception.Message))"
 }
@@ -206,7 +272,11 @@ Write-Host ""
 Write-Host "========== SYSUPGRADE RECOVERY REPORT =========="
 Write-Host ("Target:                 {0}" -f $Target)
 Write-Host ("Image:                  {0}" -f $imageFull)
-Write-Host ("SSH key:                {0}" -f $SshKey)
+if ($PlinkNoPassword) {
+    Write-Host ("Auth:                   Plink empty password ({0}, {1})" -f $pscpExe, $plinkExe)
+} else {
+    Write-Host ("SSH key:                {0}" -f $SshKey)
+}
 Write-Host ("SCP upload:             {0:F1} s" -f $durScp.TotalSeconds)
 Write-Host ("SSH sysupgrade:         {0:F1} s" -f $durSsh.TotalSeconds)
 Write-Host ("Initial grace:          {0} s   (no success judgment during this window)" -f $InitialGraceSeconds)
