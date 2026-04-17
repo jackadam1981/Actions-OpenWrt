@@ -143,6 +143,6 @@
 **实测记录（供预期）**：
 
 - **D-Link DIR-505**：经 **U-Boot / 恢复页** 刷 **OpenWrt 19.07.8 官方 factory** 后，首次 **ICMP ping 通** 约 **86.6 s**（可粗预期 **约 90 s 以内**；硬件 revision、镜像与网络环境会带来偏差）。
-- **D-Link DIR-505**（**已在 OpenWrt 上**、`192.168.1.1`、**不保留配置** `sysupgrade -n`）：镜像 **`openwrt-19.07.8-ar71xx-generic-dir-505-a1-squashfs-sysupgrade.bin`**，用 [`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1)（建议 **`-NoKeepConfig`**，PuTTY 另加 **`-PlinkNoPassword`、`-PlinkHostKey`**）。**Initial grace（默认 30 s）**指 **sysupgrade 命令发出 / SSH 断线之后**再开始 ICMP 判定，**不等于** NAND 刷写已完成，**更不能**把「宽限刚结束能 ping 通」当成刷机完成。脚本在宽限后按 **先观测掉线再 ping 通** 记「可 ping 恢复」；**ICMP 恢复 ≠ 写入完成**，仍以指示灯等为准（见上文红灯说明）。与恢复页整包写入不是同一路径；此前旧版脚本「宽限后首通即停」曾出现约 **39.6 s** 的合计读数，**易误导**，已改为上述判定逻辑。
+- **D-Link DIR-505**（**已在 OpenWrt 上**、`192.168.1.1`、**`-NoKeepConfig`**）：镜像 **`openwrt-19.07.8-ar71xx-generic-dir-505-a1-squashfs-sysupgrade.bin`**，[`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1) + **`-PlinkNoPassword`、`-PlinkHostKey`**，宽限后 **先掉线再 ping 通** 记恢复（**ICMP 仍不等于 NAND 写完**，见上文红灯说明）。**单次实测**：**SCP 起点 → 恢复 ping 通** 约 **103.7 s**；**掉线 → 再通** 约 **42.0 s**；**宽限结束 → 再通** 约 **65.3 s**；**首次持续掉线**约 **SCP 后 61.7 s**（Initial grace 默认 30 s）。与恢复页整包写入不是同一路径。
 - **Hiker X9**：刷 **hiker_x9-minimal**（黄金底 / mini）后，LAN 上首次 **ICMP ping 通** 约 **680 s**（同一脚本计时；非严格基准，冷启动、U 盘、包体积变化都会带来偏差）。
 
