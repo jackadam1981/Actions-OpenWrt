@@ -11,9 +11,9 @@
 # See /LICENSE for more information.
 #
 
-# 应用当前 target 的 target/、package/、etc/ 覆盖（矩阵编译时 TARGET_NAME/TARGETS_DIR 由工作流传入）
-if [ -n "${TARGET_NAME}" ] && [ -n "${TARGETS_DIR}" ] && [ -n "${GITHUB_WORKSPACE}" ]; then
-  TD="${GITHUB_WORKSPACE}/${TARGETS_DIR}/${TARGET_NAME}"
+apply_target_overlay() {
+  local TD="$1"
+  [ -n "$TD" ] && [ -d "$TD" ] || return 0
   if [ -d "$TD/target" ]; then
     rsync -a "$TD/target/" target/
   fi
@@ -24,6 +24,15 @@ if [ -n "${TARGET_NAME}" ] && [ -n "${TARGETS_DIR}" ] && [ -n "${GITHUB_WORKSPAC
     mkdir -p package/base-files/files/etc
     rsync -a "$TD/etc/" package/base-files/files/etc/
   fi
+}
+
+# 应用当前 target 的 target/、package/、etc/ 覆盖（矩阵编译时 TARGET_NAME/TARGETS_DIR 由工作流传入）
+if [ -n "${TARGET_NAME}" ] && [ -n "${TARGETS_DIR}" ] && [ -n "${GITHUB_WORKSPACE}" ]; then
+  # baseline-only：.config 在 targets/_hiker-x9-baseline-only/，设备与 image 定义仍在 targets/hiker-x9/
+  if [ "${TARGET_NAME}" = "_hiker-x9-baseline-only" ]; then
+    apply_target_overlay "${GITHUB_WORKSPACE}/${TARGETS_DIR}/hiker-x9"
+  fi
+  apply_target_overlay "${GITHUB_WORKSPACE}/${TARGETS_DIR}/${TARGET_NAME}"
 
   # 某些设备通过额外的 image/*.mk 扩展 profile，需要显式接到子 target 定义中。
   if [ -f target/linux/ramips/image/hiker.mk ] && [ -f target/linux/ramips/image/rt305x.mk ]; then
