@@ -19,7 +19,10 @@
   SSH 认证（OpenSSH 时用 -i 私钥；需 BatchMode，空密码不可用）。
 
 .PARAMETER PlinkNoPassword
-  使用 PuTTY 的 pscp/plink，以空密码非交互登录（OpenWrt 默认 root 无密码时常用）。
+  使用 PuTTY 的 pscp/plink 非交互登录。PuTTY 0.78+ 已弃用 -pw，脚本用 -pwfile（空密码为仅含换行的一行）。batch 模式需信任主机密钥：请传 -PlinkHostKey（首次失败时日志里的 SHA256:...）。
+
+.PARAMETER PlinkHostKey
+  传给 pscp/plink 的 -hostkey（例如 SHA256:xxxx）。PlinkNoPassword + -batch 时未缓存主机密钥会失败。
 
 .PARAMETER PuttyDirectory
   含 pscp.exe、plink.exe 的目录（优先查找）。默认 D:\\MyProgram\\putty；其它机器可传空字符串 "" 仅用 PATH / Program Files。
@@ -58,7 +61,7 @@
   .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.100.1 -Image .\firmware.bin -NoKeepConfig -InitialGraceSeconds 45
 
 .EXAMPLE
-  .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.1.1 -Image .\Firmware\sysupgrade.bin -PlinkNoPassword -PuttyDirectory "D:\MyProgram\putty"
+  .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.1.1 -Image .\Firmware\sysupgrade.bin -PlinkNoPassword -PlinkHostKey "SHA256:YOUR_FINGERPRINT"
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -68,6 +71,7 @@ param(
     [string] $SshKey = $(Join-Path $env:USERPROFILE ".ssh\hiker_x9_cursor"),
     [string] $SshUser = "root",
     [switch] $PlinkNoPassword,
+    [string] $PlinkHostKey = "",
     [string] $PuttyDirectory = "D:\MyProgram\putty",
     [switch] $NoKeepConfig,
     [switch] $TestOnly,
@@ -125,6 +129,7 @@ function Find-PuttyTool {
 
 $plinkExe = $null
 $pscpExe = $null
+$plinkPwFile = $null
 if ($PlinkNoPassword) {
     $pscpExe = Find-PuttyTool "pscp.exe" $PuttyDirectory
     $plinkExe = Find-PuttyTool "plink.exe" $PuttyDirectory
@@ -172,17 +177,35 @@ $sshBase = if ($PlinkNoPassword) {
 
 $swTotal = [Diagnostics.Stopwatch]::StartNew()
 
+if ($PlinkNoPassword) {
+    $plinkPwFile = [System.IO.Path]::GetTempFileName()
+    Remove-Item -LiteralPath $plinkPwFile -Force -ErrorAction SilentlyContinue
+    [System.IO.File]::WriteAllText($plinkPwFile, "`n", [System.Text.UTF8Encoding]::new($false))
+}
+
+function Remove-PlinkPwFileSafe {
+    param([string] $Path)
+    if (-not [string]::IsNullOrWhiteSpace($Path) -and (Test-Path -LiteralPath $Path)) {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    }
+}
+
 Write-Host "Uploading -> ${SshUser}@${Target}:${RemotePath}"
 $swScp = [Diagnostics.Stopwatch]::StartNew()
 if ($PlinkNoPassword) {
-    $pscpArgs = @(
-        "-scp", "-batch", "-pw", "",
+    if ([string]::IsNullOrWhiteSpace($PlinkHostKey)) {
+        Remove-PlinkPwFileSafe $plinkPwFile
+        Write-Error "PlinkNoPassword in batch mode requires -PlinkHostKey (e.g. SHA256:... from pscp/plink error text when host key is not cached)."
+        exit 6
+    }
+    $pscpArgs = @("-scp", "-batch", "-hostkey", $PlinkHostKey.Trim(), "-pwfile", $plinkPwFile,
         $imageFull,
         "${SshUser}@${Target}:${RemotePath}"
     )
     & $pscpExe @pscpArgs
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "pscp failed (exit $LASTEXITCODE). If host key not cached, run once: plink ${SshUser}@${Target}"
+        Remove-PlinkPwFileSafe $plinkPwFile
+        Write-Error "pscp failed (exit $LASTEXITCODE). If host key not cached, run once interactively: plink ${SshUser}@${Target}"
         exit 1
     }
 } else {
@@ -212,7 +235,7 @@ $swSsh = [Diagnostics.Stopwatch]::StartNew()
 $sshOut = $null
 try {
     if ($PlinkNoPassword) {
-        $plinkArgs = @("-ssh", "-batch", "-pw", "", "${SshUser}@${Target}", $remoteCmd)
+        $plinkArgs = @("-ssh", "-batch", "-hostkey", $PlinkHostKey.Trim(), "-pwfile", $plinkPwFile, "${SshUser}@${Target}", $remoteCmd)
         $sshOut = & $plinkExe @plinkArgs 2>&1
     } else {
         $sshArgs = $sshBase + @(
@@ -230,6 +253,9 @@ if ($null -ne $sshOut) {
 $sshExit = $LASTEXITCODE
 $durSsh = $swSsh.Elapsed
 Write-Host ("SSH/sysupgrade session: {0:F1}s (exit {1}; drop after flash is normal)" -f $durSsh.TotalSeconds, $sshExit)
+
+Remove-PlinkPwFileSafe $plinkPwFile
+$plinkPwFile = $null
 
 if ($TestOnly) {
     if ($sshExit -ne 0) {

@@ -4,15 +4,15 @@
 
 ## 结构
 
-- **targets/<name>/.config** — 必选，该目标的 OpenWrt 编译配置。
-- **targets/<name>/target/** — 可选，覆盖到 OpenWrt 源码的 `target/`（如上游不支持的型号可放 `target/linux/*` 等）。
-- **targets/<name>/package/** — 可选，覆盖到 OpenWrt 源码的 `package/`（适合补充自定义包或专有二进制封装）。
-- **targets/<name>/etc/** — 可选，覆盖到 `package/base-files/files/etc/`（固件内 `/etc` 默认文件）。
+- **targets/****/.config** — 必选，该目标的 OpenWrt 编译配置。
+- **targets/****/target/** — 可选，覆盖到 OpenWrt 源码的 `target/`（如上游不支持的型号可放 `target/linux/*` 等）。
+- **targets/****/package/** — 可选，覆盖到 OpenWrt 源码的 `package/`（适合补充自定义包或专有二进制封装）。
+- **targets/****/etc/** — 可选，覆盖到 `package/base-files/files/etc/`（固件内 `/etc` 默认文件）。
 
 ## 示例
 
 - 仅用上游支持的设备：`targets/dir-505/.config`、`targets/x86-64/.config`。
-- 上游不支持的型号（如 hiker-x9）：`targets/hiker-x9/.config` + `targets/hiker-x9/target/linux/***`，可选 `targets/hiker-x9/etc/***`。构建时会先拷贝 `.config`，再 rsync `target/`、`etc/` 到源码树。
+- 上游不支持的型号（如 hiker-x9）：`targets/hiker-x9/.config` + `targets/hiker-x9/target/linux/*`**，可选 `targets/hiker-x9/etc/***`。构建时会先拷贝 `.config`，再 rsync `target/`、`etc/` 到源码树。
 
 ## 添加新目标
 
@@ -26,14 +26,14 @@
 
 ## hiker-x9 与 openwrt-custom-devices
 
-当前 hiker-x9 采用 **ramips / rt305x + 设备 overlay** 的方式扩展，不再依赖单独的 `printserver` target。仓库会在构建时把 `targets/hiker-x9/target/linux/ramips/**` 合并进 OpenWrt 源码树，并把额外的 `hiker.mk` 接入 `rt305x.mk`。
+当前 hiker-x9 采用 **ramips / rt305x + 设备 overlay** 的方式扩展，不再依赖单独的 `printserver` target。仓库会在构建时把 `targets/hiker-x9/target/linux/ramips/`** 合并进 OpenWrt 源码树，并把额外的 `hiker.mk` 接入 `rt305x.mk`。
 
-**上游 OpenWrt 里 `SOC := rt5350` 的常见写法**（见官方 [`target/linux/ramips/image/rt305x.mk`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)）：多数 **家用路由** 条目只写 `SOC` / `IMAGE_SIZE` / `DEVICE_VENDOR` / `DEVICE_MODEL` / `SUPPORTED_DEVICES`（及个别 `IMAGES`），**不写 `DEVICE_PACKAGES`**，即完全交给 **`target/linux/ramips/rt305x/target.mk`** 里的 **`DEFAULT_PACKAGES += kmod-rt2800-soc wpad-basic-mbedtls swconfig`**，再叠 **`include/target.mk`** 里 **路由器类型** 的默认包（`dnsmasq`、`firewall`、`odhcpd-ipv6only`、`ppp` 等，随版本略有变动）。只有在板子带 **USB / 摄像头 / SPI 等额外硬件** 时，上游才在 `DEVICE_PACKAGES` 里 **追加** `kmod-usb-*`、`kmod-video-*` 等，而不是像本仓 `minimal` 那样大面积 **`-包名` 精简**。例如同文件中的 **`dlink_dir-300-b7`**、**`dlink_dir-320-b1`**、**`belkin_f7c027`**、**`omnima_miniembplug`** 等 **rt5350** 机型均无 `DEVICE_PACKAGES`；**`7links_px-4885-*`**、**`dlink_dcs-930l-b1`** 等则只加与硬件相关的 kmod。开发板 **`8devices_carambola`** 显式写了 **`DEVICE_PACKAGES :=`（空）** 表示「零额外包」。**`hiker_x9-minimal-baseline`** 在 **走 ramips/rt305x + 路由器默认栈** 的前提下，**仅追加 `urngd`**（与上游「只加 kmod 类」同属小范围附加）。
+**上游 OpenWrt 里 `SOC := rt5350` 的常见写法**（见官方 `[target/linux/ramips/image/rt305x.mk](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)`）：多数 **家用路由** 条目只写 `SOC` / `IMAGE_SIZE` / `DEVICE_VENDOR` / `DEVICE_MODEL` / `SUPPORTED_DEVICES`（及个别 `IMAGES`），**不写 `DEVICE_PACKAGES`**，即完全交给 `**target/linux/ramips/rt305x/target.mk**` 里的 `**DEFAULT_PACKAGES += kmod-rt2800-soc wpad-basic-mbedtls swconfig**`，再叠 `**include/target.mk**` 里 **路由器类型** 的默认包（`dnsmasq`、`firewall`、`odhcpd-ipv6only`、`ppp` 等，随版本略有变动）。只有在板子带 **USB / 摄像头 / SPI 等额外硬件** 时，上游才在 `DEVICE_PACKAGES` 里 **追加** `kmod-usb-*`、`kmod-video-*` 等，而不是像本仓 `minimal` 那样大面积 `**-包名` 精简**。例如同文件中的 `**dlink_dir-300-b7`**、`**dlink_dir-320-b1**`、`**belkin_f7c027**`、`**omnima_miniembplug**` 等 **rt5350** 机型均无 `DEVICE_PACKAGES`；`**7links_px-4885-*`**、`**dlink_dcs-930l-b1**` 等则只加与硬件相关的 kmod。开发板 `**8devices_carambola**` 显式写了 `**DEVICE_PACKAGES :=`（空）** 表示「零额外包」。`**hiker_x9-minimal-baseline`** 在 **走 ramips/rt305x + 路由器默认栈** 的前提下，**仅追加 `urngd`**（与上游「只加 kmod 类」同属小范围附加）。
 
-- **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、**`CONFIG_TARGET_MULTI_PROFILE=y`**、**`CONFIG_TARGET_PER_DEVICE_ROOTFS=y`**，以及多个 **`CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y`**（注意是 **`TARGET_DEVICE_…`** 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
-  - **`hiker_x9-minimal-baseline`（`targets/_hiker-x9-baseline-only/.config` / workflow `baseline_only`）**：与 `minimal` **同 DTS**；包集合 **按 ramips/rt305x 上游默认**，**仅追加 `urngd`**（加快首启熵），**不装** `hiker-x9-minimal-defaults`。用于与 `minimal`（自定义 strip + `192.168.100.1`）对比首启；**不要**仍用 `192.168.100.1` 去 ping baseline。详见 `targets/_hiker-x9-baseline-only/README.md`。
+- **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、`**CONFIG_TARGET_MULTI_PROFILE=y`**、`**CONFIG_TARGET_PER_DEVICE_ROOTFS=y**`，以及多个 `**CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y**`（注意是 `**TARGET_DEVICE_…**` 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
+  - `**hiker_x9-minimal-baseline`（`targets/_hiker-x9-baseline-only/.config` / workflow `baseline_only`）**：与 `minimal` **同 DTS**；包集合 **按 ramips/rt305x 上游默认**，**仅追加 `urngd`**（加快首启熵），**不装** `hiker-x9-minimal-defaults`。用于与 `minimal`（自定义 strip + `192.168.100.1`）对比首启；**不要**仍用 `192.168.100.1` 去 ping baseline。详见 `targets/_hiker-x9-baseline-only/README.md`。
   - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`。**实测参考**：刷写后 LAN 侧用 `ping-until-up` 计时至首次 **ping 通** 约 **680 s**（约 11 min，随环境与存储略有出入）；**LAN 为 `192.168.100.1`**（由 `hiker-x9-minimal-defaults` 写入））
-  - `hiker_x9-factory`（**官版首刷**：与 minimal 类似的精简栈，另含 **`hiker-x9-breed-autoflash`**；生成 **`factory.bin`**，**可由官版 / 原厂 Web 或恢复流程直接刷入**；刷机后见下文「红灯不再闪烁」再断电操作）
+  - `hiker_x9-factory`（**官版首刷**：与 minimal 类似的精简栈，另含 `**hiker-x9-breed-autoflash`**；生成 `**factory.bin**`，**可由官版 / 原厂 Web 或恢复流程直接刷入**；刷机后见下文「红灯不再闪烁」再断电操作）
   - `hiker_x9-p910nd`
   - `hiker_x9-p910nd-wifi`
   - `hiker_x9-p910nd-wifi-lite`
@@ -41,64 +41,68 @@
   - `hiker_x9-virtualhere-wifi`
   - `hiker_x9-both`（**p910nd + VirtualHere**，有线；与 `minimal` 相同 WiFi 用户态剔除策略）
   - `hiker_x9-both-wifi`（同上 + **AP WiFi 栈**）
-- **`package/network/services/`** 下与上述 **7 个功能 profile** **一一对应** 的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`（**`hiker_x9-factory` 复用 `hiker-x9-minimal-defaults`**，无单独 `*-factory-defaults`）；另有共用的 **`virtualhere-usb-server`** 与 **`hiker-x9-reset-button`**（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
+- `**package/network/services/`** 下与上述 **7 个功能 profile** **一一对应** 的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`（`**hiker_x9-factory` 复用 `hiker-x9-minimal-defaults`**，无单独 `*-factory-defaults`）；另有共用的 `**virtualhere-usb-server**` 与 `**hiker-x9-reset-button**`（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
 
 ### 首启很慢、SSH 很久才通（常见原因）
 
-1. **Dropbear 首次生成 host key**（`/etc/dropbear/dropbear_*_host_key`）：在 RT5350 上若熵不足，`dropbearkey` 可能极慢。`hiker_x9-minimal` / `factory` 已加入 **`urngd`** 以加快随机数（仍建议首次上电多等一会儿）。
-2. **WAN 默认 `dhcp`、网线未插**：`udhcpc` 会长时间重试，拖慢 `netifd` 与后续服务。`99-hiker-x9-minimal` 在首启把 **`network.wan.proto` 置为 `none`**（纯 LAN 场景）；若你确实要用 WAN 拨号/上联，刷机后在 `/etc/config/network` 里改回 `dhcp`/`pppoe` 等。
-3. **自行对照日志**：SSH 能登录后执行 **`logread -e hiker-mini -e dropbear -e netifd`** 看 `uci-defaults` 与网络、SSH 启动的相对时间；**`dmesg | tail`** 看内核阶段是否异常慢。
+1. **Dropbear 首次生成 host key**（`/etc/dropbear/dropbear_*_host_key`）：在 RT5350 上若熵不足，`dropbearkey` 可能极慢。`hiker_x9-minimal` / `factory` 已加入 `**urngd`** 以加快随机数（仍建议首次上电多等一会儿）。
+2. **WAN 默认 `dhcp`、网线未插**：`udhcpc` 会长时间重试，拖慢 `netifd` 与后续服务。`99-hiker-x9-minimal` 在首启把 `**network.wan.proto` 置为 `none`**（纯 LAN 场景）；若你确实要用 WAN 拨号/上联，刷机后在 `/etc/config/network` 里改回 `dhcp`/`pppoe` 等。
+3. **自行对照日志**：SSH 能登录后执行 `**logread -e hiker-mini -e dropbear -e netifd`** 看 `uci-defaults` 与网络、SSH 启动的相对时间；`**dmesg | tail**` 看内核阶段是否异常慢。
 
 ### hiker-x9：`DEVICE_PACKAGES` 一览（对照 `hiker.mk`）
 
-以下只统计 **`hiker.mk` 里每个 profile 的显式项**：以 **`+`** 表示强制装入，**`−`** 表示从 **该 subtarget 的默认包集合** 中剔除（OpenWrt 的 `-包名` 语义）。  
-**未出现在表里的包**：仍可能来自 **ramips/rt305x 路由器镜像的默认包**（如 `dropbear`、`firewall`、`dnsmasq` 等，随上游版本略有变动），除非被 **`−`** 去掉。
+以下只统计 `**hiker.mk` 里每个 profile 的显式项**：以 `**+`** 表示强制装入，`**−**` 表示从 **该 subtarget 的默认包集合** 中剔除（OpenWrt 的 `-包名` 语义）。  
+**未出现在表里的包**：仍可能来自 **ramips/rt305x 路由器镜像的默认包**（如 `dropbear`、`firewall`、`dnsmasq` 等，随上游版本略有变动），除非被 `**−`** 去掉。
 
 #### 表 A — 显式装入（`+`）
 
-| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi | both | both-wifi |
-|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|:----:|:---------:|
-| `luci-light` | + | + | + | + | + | + | + |
-| `luci-theme-bootstrap` | + | + | + | + | + | + | + |
-| `luci-i18n-base-zh-cn` | + | + | + | + | + | + | + |
-| `p910nd` | | + | + | | | + | + |
-| `luci-app-p910nd` | | + | + | | | + | + |
-| `luci-i18n-p910nd-zh-cn` | | + | + | | | + | + |
-| `kmod-usb-core` | | + | + | + | + | + | + |
-| `kmod-usb-ohci` | | + | + | + | + | + | + |
-| `kmod-usb2` | | + | + | + | + | + | + |
-| `kmod-usb-printer` | | + | + | | | + | + |
-| `kmod-mac80211` | | | + | | + | | + |
-| `kmod-rt2800-lib` / `kmod-rt2800-mmio` / `kmod-rt2800-soc` | | | + | | + | | + |
-| `kmod-rt2x00-lib` / `kmod-rt2x00-mmio` | | | + | | + | | + |
-| `wpad-mbedtls` | | | + | | + | | + |
-| `iw` | | | + | | + | | + |
-| `iwinfo` | | | + | | + | | + |
-| `virtualhere-usb-server` | | | | + | + | + | + |
-| `hiker-x9-minimal-defaults` | + | | | | | | |
-| `hiker-x9-p910nd-defaults` | | + | | | | | |
-| `hiker-x9-p910nd-wifi-defaults` | | | + | | | | |
-| `hiker-x9-virtualhere-defaults` | | | | + | | | |
-| `hiker-x9-virtualhere-wifi-defaults` | | | | | + | | |
-| `hiker-x9-both-defaults` | | | | | | + | |
-| `hiker-x9-both-wifi-defaults` | | | | | | | + |
+
+| 包名                                                         | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi | both | both-wifi |
+| ---------------------------------------------------------- | ------- | ------ | ----------- | ----------- | ---------------- | ---- | --------- |
+| `luci-light`                                               | +       | +      | +           | +           | +                | +    | +         |
+| `luci-theme-bootstrap`                                     | +       | +      | +           | +           | +                | +    | +         |
+| `luci-i18n-base-zh-cn`                                     | +       | +      | +           | +           | +                | +    | +         |
+| `p910nd`                                                   |         | +      | +           |             |                  | +    | +         |
+| `luci-app-p910nd`                                          |         | +      | +           |             |                  | +    | +         |
+| `luci-i18n-p910nd-zh-cn`                                   |         | +      | +           |             |                  | +    | +         |
+| `kmod-usb-core`                                            |         | +      | +           | +           | +                | +    | +         |
+| `kmod-usb-ohci`                                            |         | +      | +           | +           | +                | +    | +         |
+| `kmod-usb2`                                                |         | +      | +           | +           | +                | +    | +         |
+| `kmod-usb-printer`                                         |         | +      | +           |             |                  | +    | +         |
+| `kmod-mac80211`                                            |         |        | +           |             | +                |      | +         |
+| `kmod-rt2800-lib` / `kmod-rt2800-mmio` / `kmod-rt2800-soc` |         |        | +           |             | +                |      | +         |
+| `kmod-rt2x00-lib` / `kmod-rt2x00-mmio`                     |         |        | +           |             | +                |      | +         |
+| `wpad-mbedtls`                                             |         |        | +           |             | +                |      | +         |
+| `iw`                                                       |         |        | +           |             | +                |      | +         |
+| `iwinfo`                                                   |         |        | +           |             | +                |      | +         |
+| `virtualhere-usb-server`                                   |         |        |             | +           | +                | +    | +         |
+| `hiker-x9-minimal-defaults`                                | +       |        |             |             |                  |      |           |
+| `hiker-x9-p910nd-defaults`                                 |         | +      |             |             |                  |      |           |
+| `hiker-x9-p910nd-wifi-defaults`                            |         |        | +           |             |                  |      |           |
+| `hiker-x9-virtualhere-defaults`                            |         |        |             | +           |                  |      |           |
+| `hiker-x9-virtualhere-wifi-defaults`                       |         |        |             |             | +                |      |           |
+| `hiker-x9-both-defaults`                                   |         |        |             |             |                  | +    |           |
+| `hiker-x9-both-wifi-defaults`                              |         |        |             |             |                  |      | +         |
+
 
 #### 表 B — 显式剔除（`−`）
 
-| 包名 | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi | both | both-wifi |
-|------|:-------:|:------:|:-----------:|:-------------:|:----------------:|:----:|:---------:|
-| `wpad-basic-mbedtls` | − | | − | | − | − | − |
-| `iw` | − | | | | | − | |
-| `iwinfo` | − | | | | | − | |
+
+| 包名                   | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi | both | both-wifi |
+| -------------------- | ------- | ------ | ----------- | ----------- | ---------------- | ---- | --------- |
+| `wpad-basic-mbedtls` | −       |        | −           |             | −                | −    | −         |
+| `iw`                 | −       |        |             |             |                  | −    |           |
+| `iwinfo`             | −       |        |             |             |                  | −    |           |
+
 
 #### 读表提示
 
-- **`hiker_x9-factory`**：显式包与 **minimal** 同表思路，另加 **`hiker-x9-breed-autoflash`**，并定义 **`IMAGES += factory.bin`**；**官版首刷请选该 profile 产物 `factory.bin`**，勿与仅 `sysupgrade` 的 profile 混用在原厂恢复页上。
-- **`p910nd-wifi` / `virtualhere-wifi` / `both-wifi`**：`−wpad-basic-mbedtls` 与 **`+wpad-mbedtls`** 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
-- **每个功能 profile 对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile 维护；**复位键脚本** 集中在 **`hiker-x9-reset-button`**；**`both*`** 仍不复用 **`virtualhere-*-defaults`**。
-- **`minimal`**：保留 LuCI 与中文，**`+hiker-x9-minimal-defaults`**，且 **`−wpad-basic-mbedtls`**、**`−iw` / `−iwinfo`**；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
-- **`p910nd`（无 WiFi）**：未写 **`−wpad-*`**，即 **沿用该 target 默认的 wpad 组合**（若与后续精简策略冲突，可再单独加 `−` 行对齐 `minimal`）。
+- `**hiker_x9-factory**`：显式包与 **minimal** 同表思路，另加 `**hiker-x9-breed-autoflash`**，并定义 `**IMAGES += factory.bin**`；**官版首刷请选该 profile 产物 `factory.bin`**，勿与仅 `sysupgrade` 的 profile 混用在原厂恢复页上。
+- `**p910nd-wifi` / `virtualhere-wifi` / `both-wifi**`：`−wpad-basic-mbedtls` 与 `**+wpad-mbedtls**` 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
+- **每个功能 profile 对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile 维护；**复位键脚本** 集中在 `**hiker-x9-reset-button`**；`**both***` 仍不复用 `**virtualhere-*-defaults**`。
+- `**minimal**`：保留 LuCI 与中文，`**+hiker-x9-minimal-defaults**`，且 `**−wpad-basic-mbedtls**`、`**−iw` / `−iwinfo**`；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
+- `**p910nd`（无 WiFi）**：未写 `**−wpad-*`**，即 **沿用该 target 默认的 wpad 组合**（若与后续精简策略冲突，可再单独加 `−` 行对齐 `minimal`）。
 
 **参考仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 仍可查阅历史设备思路；**CI 已不再通过 feed 引入**。增硬件与机型请只在 `targets/<name>/` 下维护 overlay（`target/`、`package/`、`etc/`），由 `diy-part2.sh` 合并进 OpenWrt 源码树。
 
@@ -117,28 +121,28 @@
 
 **推荐修正方式（任选其一或并用）**：
 
-1. **OpenWrt 主线**  
-   在 printserver 目标或对应设备的定义里，把 **base-files** 加入该 target 的默认包（例如 `DEFAULT_PACKAGES` 或 profile 的包列表），保证会执行 `package/base-files` 的 compile + install，从而在 `$(STAGING_DIR)/base-files.version` 生成文件。
-
-2. **openwrt-custom-devices**  
-   仓库中已为 printserver hiker-x9 增加默认包 profile，参考 RT5350/ramips 的默认集（与 `include/target.mk` 一致的基础包 + router 类型包 + kmod-leds-gpio、kmod-gpio-button-hotplug）：  
+1. **OpenWrt 主线**
+  在 printserver 目标或对应设备的定义里，把 **base-files** 加入该 target 的默认包（例如 `DEFAULT_PACKAGES` 或 profile 的包列表），保证会执行 `package/base-files` 的 compile + install，从而在 `$(STAGING_DIR)/base-files.version` 生成文件。
+2. **openwrt-custom-devices**
+  仓库中已为 printserver hiker-x9 增加默认包 profile，参考 RT5350/ramips 的默认集（与 `include/target.mk` 一致的基础包 + router 类型包 + kmod-leds-gpio、kmod-gpio-button-hotplug）：  
    **target/linux/printserver/profiles/hiker-x9.mk** 中定义了 `Profile/hikerx9` 的 `PACKAGES`（含 base-files、libc、netifd、dnsmasq、firewall4 等）。  
    在 OpenWrt 中需让 printserver 目标 **include 该 profiles 目录**（例如在 printserver 的 Makefile 里通过 `IncludeProfiles` 或 `-include profiles/hiker-x9.mk`），这样选 CONFIG_TARGET_printserver_hikerx9 时才会带上这些默认包，从而生成 base-files.version。
-
-3. **本仓兜底（diy-part2.sh）**  
-   若暂时无法改上游，可在本仓的 diy-part2 里对使用 APK 的 printserver 构建**强制选中 base-files**（见下），让 base-files 参与编译和 install，从而生成 `base-files.version`。
+3. **本仓兜底（diy-part2.sh）**
+  若暂时无法改上游，可在本仓的 diy-part2 里对使用 APK 的 printserver 构建**强制选中 base-files**（见下），让 base-files 参与编译和 install，从而生成 `base-files.version`。
 
 ---
 
 ## 刷机与 bin 产物分析
 
-> **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。**从官版首刷**请使用 **`hiker_x9-factory` 的 `factory.bin`**（见上文与 [刷机文档](../docs/flashing-from-bin-and-source.md)）。
+> **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。**从官版首刷**请使用 **hiker_x9-factory** 的 **factory.bin**（见上文与 [刷机文档](../docs/flashing-from-bin-and-source.md)）。
 
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
 
-**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。**`.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错；探测使用 **.NET ICMP**（与 `ping` 一致），**不用** `Test-Connection -TimeoutSeconds`（PS 5.1 无该参数，会恒失败）。
+**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。**`.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错；探测使用 **.NET ICMP**（与 `ping` 一致），**不用** `Test-Connection -TimeoutSeconds`（PS 5.1 无该参数，会恒失败）。系统内刷写并计全程见 [`scripts/measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1)（PuTTY 0.78+ 需 `-PlinkHostKey` 与 `-pwfile` 空密码）。
 
 **实测记录（供预期）**：
 
-- **D-Link DIR-505**：经 **U-Boot / 恢复页** 刷 **OpenWrt 官方 factory** 后，首次 **ICMP ping 通** 约 **86.6 s**（可粗预期 **约 90 s 以内**；硬件 revision、镜像与网络环境会带来偏差）。
-- **Hiker X9**：刷 **`hiker_x9-minimal`（黄金底 / mini）** 后，LAN 上首次 **ICMP ping 通** 约 **680 s**（同一脚本计时；非严格基准，冷启动、U 盘、包体积变化都会带来偏差）。
+- **D-Link DIR-505**：经 **U-Boot / 恢复页** 刷 **OpenWrt 19.07.8 官方 factory** 后，首次 **ICMP ping 通** 约 **86.6 s**（可粗预期 **约 90 s 以内**；硬件 revision、镜像与网络环境会带来偏差）。
+- **D-Link DIR-505**（**已在 OpenWrt 上**、`192.168.1.1`、**保留配置** `sysupgrade`）：镜像 **`openwrt-19.07.8-ar71xx-generic-dir-505-a1-squashfs-sysupgrade.bin`**，用 [`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1)（`-PlinkNoPassword` + `-PlinkHostKey`）计时 — **自 SCP 开始到再次 ping 通合计约 39.6 s**（脚本默认 **Initial grace 30 s** 结束后 **立刻** ping 通，**After grace → ping OK** 显示约 **0 s**；与恢复页整包写入不是同一路径）。
+- **Hiker X9**：刷 **hiker_x9-minimal**（黄金底 / mini）后，LAN 上首次 **ICMP ping 通** 约 **680 s**（同一脚本计时；非严格基准，冷启动、U 盘、包体积变化都会带来偏差）。
+
