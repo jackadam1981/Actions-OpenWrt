@@ -3,7 +3,7 @@
 # https://github.com/P3TERX/Actions-OpenWrt
 # File name: diy-part2.sh
 # Description: OpenWrt DIY script part 2 (After Update feeds, 已加载 .config)
-# 在 Actions 中运行时：会安装 targets feed 的 TARGET，并应用 targets/<name> 下的自定义覆盖。
+# 在 Actions 中运行时：会安装 custom_devices feed 的 TARGET，并应用 targets/<name> 下的自定义覆盖。
 #
 # Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
 #
@@ -11,10 +11,10 @@
 # See /LICENSE for more information.
 #
 
-# 安装 targets feed 中的 TARGET 包（feed 提供 TARGET: 包即由此安装 target 定义）
-list_targets() { ./scripts/feeds list -r targets 2>/dev/null | awk '/^TARGET:/ {print $2}' || true; }
-for t in $(list_targets); do
-  [ -n "$t" ] && ./scripts/feeds install -p targets -f "$t" || true
+# 安装 custom_devices feed 中的 TARGET 包（feed 提供 TARGET: 包即由此安装 target 定义）
+list_custom_targets() { ./scripts/feeds list -r custom_devices 2>/dev/null | awk '/^TARGET:/ {print $2}' || true; }
+for t in $(list_custom_targets); do
+  [ -n "$t" ] && ./scripts/feeds install -p custom_devices -f "$t" || true
 done
 
 # 应用当前 target 的 target/、package/、etc/ 覆盖（矩阵编译时 TARGET_NAME/TARGETS_DIR 由工作流传入）
