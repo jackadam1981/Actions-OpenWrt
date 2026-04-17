@@ -143,6 +143,6 @@
 **实测记录（供预期）**：
 
 - **D-Link DIR-505**：经 **U-Boot / 恢复页** 刷 **OpenWrt 19.07.8 官方 factory** 后，首次 **ICMP ping 通** 约 **86.6 s**（可粗预期 **约 90 s 以内**；硬件 revision、镜像与网络环境会带来偏差）。
-- **D-Link DIR-505**（**已在 OpenWrt 上**、`192.168.1.1`、**`-NoKeepConfig`**）：镜像 **`openwrt-19.07.8-ar71xx-generic-dir-505-a1-squashfs-sysupgrade.bin`**，[`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1) + **`-PlinkNoPassword`、`-PlinkHostKey`**，宽限后 **先掉线再 ping 通** 记恢复（**ICMP 仍不等于 NAND 写完**，见上文红灯说明）。**单次实测**：**SCP 起点 → 恢复 ping 通** 约 **103.7 s**；**掉线 → 再通** 约 **42.0 s**；**宽限结束 → 再通** 约 **65.3 s**；**首次持续掉线**约 **SCP 后 61.7 s**（Initial grace 默认 30 s）。与恢复页整包写入不是同一路径。
+- **D-Link DIR-505**（**已在 OpenWrt 上**、`192.168.1.1`、**`-NoKeepConfig`**）：镜像 **`openwrt-19.07.8-ar71xx-generic-dir-505-a1-squashfs-sysupgrade.bin`**，[`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1) + **`-PlinkNoPassword`、`-PlinkHostKey`**（**`-n` 会重建 Dropbear 主机密钥**，指纹会变，需按 pscp/plink 报错更新 **`-PlinkHostKey`**），宽限后 **先掉线再 ping 通** 记恢复（**ICMP 仍不等于 NAND 写完**，见上文红灯说明）。可加 **`-ProbeTcpPortAfterPing 80`** 看 **Web 端口**相对 ping 的滞后。**再测（同机、含 TCP80）**：**SCP → ping 通** 约 **133.6 s**；**掉线 → 再通** 约 **72.0 s**；**宽限结束 → 再通** 约 **94.9 s**；**首次持续掉线**约 **SCP 后 61.6 s**；**ICMP → TCP 80** 约 **0.1 s**；**SCP → TCP 80** 约 **133.7 s**。此前同条件另一次约 **103.7 / 42.0 / 65.3 / 61.7 s**（无 TCP 段），**冷启动与负载不同会带来偏差**。与恢复页整包写入不是同一路径。
 - **Hiker X9**：刷 **hiker_x9-minimal**（黄金底 / mini）后，LAN 上首次 **ICMP ping 通** 约 **680 s**（同一脚本计时；非严格基准，冷启动、U 盘、包体积变化都会带来偏差）。
 
