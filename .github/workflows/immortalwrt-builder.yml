@@ -12,11 +12,9 @@
 
 name: ImmortalWrt Builder
 
+# 仅手动运行（不随 repository_dispatch 自动触发）
 on:
   workflow_dispatch:
-  repository_dispatch:
-    types:
-      - ImmortalWrt Source Update
 
 permissions:
   contents: write

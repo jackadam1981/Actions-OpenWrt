@@ -12,19 +12,8 @@
 
 name: OpenWrt Builder
 
+# 仅手动运行（不随 push / repository_dispatch 自动触发）
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'targets/**'
-      - '.github/workflows/openwrt-builder.yml'
-      - 'diy-part1.sh'
-      - 'diy-part2.sh'
-      - 'feeds.conf.default'
-  repository_dispatch:
-    types:
-      - OpenWrt Source Update
   workflow_dispatch:
     inputs:
       runner:
