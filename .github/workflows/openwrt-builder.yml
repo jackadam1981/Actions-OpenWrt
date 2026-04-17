@@ -26,6 +26,18 @@ on:
     types:
       - OpenWrt Source Update
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Where to run the build job (list-configs always uses GitHub-hosted)'
+        type: choice
+        options:
+          - github-hosted
+          - self-hosted
+        default: github-hosted
+      baseline_only:
+        description: 'If true, only build targets/_hiker-x9-baseline-only/.config (hiker_x9-minimal-baseline)'
+        type: boolean
+        default: false
 
 # contents: release/tags; actions: required by Mattraks/delete-workflow-runs (delete workflow runs API).
 permissions:
@@ -62,10 +74,17 @@ jobs:
     - name: List targets (targets/<name>/.config)
       id: list
       run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.baseline_only }}" = "true" ]; then
+          echo 'configs=["'"$TARGETS_DIR"'/_hiker-x9-baseline-only/.config"]' >> $GITHUB_OUTPUT
+          exit 0
+        fi
         if [ -d "$TARGETS_DIR" ] && [ -n "$(ls -A $TARGETS_DIR 2>/dev/null)" ]; then
           configs="["
           first=1
           for t in $(ls -A "$TARGETS_DIR" 2>/dev/null); do
+            case "$t" in
+              _*) continue ;;
+            esac
             [ -f "$TARGETS_DIR/$t/.config" ] || continue
             [ "$first" -eq 0 ] && configs="$configs,"
             configs="$configs\"$TARGETS_DIR/$t/.config\""
@@ -83,7 +102,7 @@ jobs:
 
   build:
     needs: list-configs
-    runs-on: ubuntu-22.04
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted' && fromJSON('["self-hosted", "linux", "x64"]') || 'ubuntu-22.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -106,7 +125,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Initialization environment
+    - name: Initialization environment (GitHub-hosted)
+      if: runner.environment != 'self-hosted'
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -116,16 +136,27 @@ jobs:
         sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
 
-    - name: Clone source code
+    - name: Prepare workdir (all runners)
+      run: |
+        sudo timedatectl set-timezone "$TZ" || true
+        sudo mkdir -p /workdir
+        sudo chown "$USER:$GROUPS" /workdir
+
+    - name: Clone or update source code
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        if [ -d openwrt/.git ]; then
+          cd openwrt
+          git remote set-url origin "$REPO_URL"
+          git fetch --depth 1 origin "$REPO_BRANCH"
+          git checkout -B "$REPO_BRANCH" FETCH_HEAD
+        else
+          rm -rf openwrt
+          git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" openwrt
+        fi
+        ln -sf /workdir/openwrt "$GITHUB_WORKSPACE/openwrt"
 
     - name: Restore OpenWrt dl + ccache
       uses: actions/cache/restore@v4
