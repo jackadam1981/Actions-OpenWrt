@@ -44,6 +44,9 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
+  CCACHE_DIR: /workdir/.ccache
+  CCACHE_COMPRESS: 'true'
+  CCACHE_MAXSIZE: 2G
   # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -124,6 +127,17 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+    - name: Restore OpenWrt dl + ccache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/.ccache
+        key: openwrt-${{ env.CONFIG_SLUG }}-${{ hashFiles(matrix.config, 'feeds.conf.default', 'diy-part1.sh', 'diy-part2.sh') }}-${{ github.run_id }}-${{ strategy.job-index }}
+        restore-keys: |
+          openwrt-${{ env.CONFIG_SLUG }}-${{ hashFiles(matrix.config, 'feeds.conf.default', 'diy-part1.sh', 'diy-part2.sh') }}-
+          openwrt-${{ env.CONFIG_SLUG }}-
+
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
@@ -149,6 +163,7 @@ jobs:
       id: package
       run: |
         cd openwrt
+        grep -q '^CONFIG_CCACHE=' .config 2>/dev/null || echo 'CONFIG_CCACHE=y' >> .config
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -173,6 +188,15 @@ jobs:
           exit 1
         fi
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' | head -5 || true
+
+    - name: Save OpenWrt dl + ccache
+      if: (!cancelled())
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/.ccache
+        key: openwrt-${{ env.CONFIG_SLUG }}-${{ hashFiles(matrix.config, 'feeds.conf.default', 'diy-part1.sh', 'diy-part2.sh') }}-${{ github.run_id }}-${{ strategy.job-index }}
 
     - name: Check space usage
       if: (!cancelled())
