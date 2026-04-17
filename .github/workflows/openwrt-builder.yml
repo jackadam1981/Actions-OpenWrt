@@ -38,6 +38,10 @@ on:
         description: 'true=仅编 baseline（hiker_x9-minimal-baseline）；LAN 默认 192.168.1.1、无 dnsmasq，PC 需静态 IP 再测，勿用 192.168.100.1'
         type: boolean
         default: false
+      only_targets:
+        description: '可选：仅编译这些 targets 子目录（逗号分隔，如 dir-505）。留空则编译除 _ 前缀外全部含 .config 的目录。与 baseline_only 互斥时请 baseline_only=false'
+        type: string
+        default: ''
 
 # contents: release/tags; actions: required by Mattraks/delete-workflow-runs (delete workflow runs API).
 permissions:
@@ -76,6 +80,33 @@ jobs:
       run: |
         if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.baseline_only }}" = "true" ]; then
           echo 'configs=["'"$TARGETS_DIR"'/_hiker-x9-baseline-only/.config"]' >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.only_targets }}" ]; then
+          configs="["
+          first=1
+          IFS=',' read -ra ONLY_ARR <<< "${{ inputs.only_targets }}"
+          for name in "${ONLY_ARR[@]}"; do
+            name="$(echo "$name" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            [ -n "$name" ] || continue
+            case "$name" in
+              _*) echo "::error::only_targets 不允许以下划线开头的目录: $name" >&2; exit 1 ;;
+            esac
+            cfg="$TARGETS_DIR/$name/.config"
+            if [ ! -f "$cfg" ]; then
+              echo "::error::找不到 $cfg" >&2
+              exit 1
+            fi
+            [ "$first" -eq 0 ] && configs="$configs,"
+            configs="$configs\"$cfg\""
+            first=0
+          done
+          configs="$configs]"
+          if [ "$configs" = "[]" ]; then
+            echo "::error::only_targets 解析后为空" >&2
+            exit 1
+          fi
+          echo "configs=$configs" >> $GITHUB_OUTPUT
           exit 0
         fi
         if [ -d "$TARGETS_DIR" ] && [ -n "$(ls -A $TARGETS_DIR 2>/dev/null)" ]; then
