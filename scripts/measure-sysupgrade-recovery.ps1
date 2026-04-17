@@ -3,7 +3,8 @@
   SCP 上传镜像并 SSH 执行 sysupgrade，计时「刷写到再次 ping 通」耗时（与 measure-reboot-recovery 同类）。
 
 .DESCRIPTION
-  默认在 sysupgrade 会话结束后等待 InitialGraceSeconds，再 ICMP 探测直至成功，并打印汇总报告。
+  sysupgrade 会话结束（SSH 常断开）后先等待 InitialGraceSeconds：此窗口**不表示** NAND 刷写已完成，仅避免立刻用 ICMP 误判。
+  宽限结束后与 measure-reboot-recovery 相同：须先观测连续 MinDownProbes 次 ICMP 失败（掉线），再等到 ping 通，才记为「可 ping 恢复」。ICMP 恢复仍**不等于**镜像写入完成，实机请以指示灯等为准。
   仅校验镜像用 -TestOnly；只上传刷写、不测时用 -NoWaitForPing。
 
 .PARAMETER Image
@@ -40,7 +41,10 @@
   不等待 ping、不输出恢复段报告（刷写后请自行用 ping-until-up.ps1）。
 
 .PARAMETER InitialGraceSeconds
-  SSH sysupgrade 返回后先等待再开始判定 ping 通（默认 30；避免尚未重启就误判）。
+  SSH/sysupgrade 断线后先等待再开始「掉线→恢复」判定（默认 30）。**不是**「再等 30 秒刷机就完成了」。
+
+.PARAMETER MinDownProbes
+  宽限结束后，判定「已掉线」所需的连续 ping 失败次数（默认 2）。
 
 .PARAMETER IntervalSeconds
   恢复探测间隔（秒，支持小数）。
@@ -49,7 +53,7 @@
   单次 ICMP 超时（毫秒）。
 
 .PARAMETER MaxWaitSeconds
-  宽限结束后最长等待 ping 通（秒，0 表示不限制）。
+  自 SCP 开始计时的总预算（秒）；超时仍未在宽限后观测掉线再 ping 通则失败（0 表示不限制）。
 
 .PARAMETER SkipPingPrecheck
   跳过刷写前 ICMP 预检。
@@ -81,6 +85,7 @@ param(
     [double] $IntervalSeconds = 1.0,
     [int] $PingTimeoutMs = 2000,
     [int] $MaxWaitSeconds = 600,
+    [int] $MinDownProbes = 2,
     [switch] $SkipPingPrecheck
 )
 
@@ -271,43 +276,71 @@ if ($NoWaitForPing) {
     exit 0
 }
 
-Write-Host "Initial grace: waiting ${InitialGraceSeconds}s before ICMP success detection..."
+Write-Host "Initial grace: waiting ${InitialGraceSeconds}s (after sysupgrade disconnect; grace does NOT mean flash/write finished)..."
 Start-Sleep -Seconds $InitialGraceSeconds
-$tAfterGrace = $swTotal.Elapsed
+$tGraceEnd = $swTotal.Elapsed
+$probeStartSec = $tGraceEnd.TotalSeconds + 0.5
 
-Write-Host "Probing ping recovery (max ${MaxWaitSeconds}s from end of grace, interval ${IntervalSeconds}s)..."
-$swProbe = [Diagnostics.Stopwatch]::StartNew()
+$downProbes = 0
+$firstDownAt = $null
+$firstUpAfterDownAt = $null
+
+$maxLabel = if ($MaxWaitSeconds -gt 0) { "${MaxWaitSeconds}s from SCP start" } else { "unlimited (SCP start)" }
+Write-Host "Probing ping recovery (max $maxLabel, interval ${IntervalSeconds}s; require down then up after grace)..."
 while ($true) {
-    $probeElapsed = $swProbe.Elapsed
-    if ($MaxWaitSeconds -gt 0 -and $probeElapsed.TotalSeconds -ge $MaxWaitSeconds) {
-        Write-Error "TIMEOUT: no ping within ${MaxWaitSeconds}s after grace."
+    $elapsed = $swTotal.Elapsed
+    if ($MaxWaitSeconds -gt 0 -and $elapsed.TotalSeconds -ge $MaxWaitSeconds) {
+        Write-Host ("TIMEOUT after {0:F1}s from SCP start." -f $elapsed.TotalSeconds)
+        if ($null -eq $firstDownAt) {
+            Write-Host "Hint: ICMP never went down after grace. Reboot/flash may have finished during grace, or link stayed up (still old stack). ICMP OK is not proof NAND finished — see LEDs; try larger -InitialGraceSeconds or check sysupgrade."
+        }
         exit 1
     }
-    if (Test-IcmpReachable -HostOrIp $Target -TimeoutMs $PingTimeoutMs) {
-        break
+
+    $ok = Test-IcmpReachable -HostOrIp $Target -TimeoutMs $PingTimeoutMs
+    if ($ok) {
+        if ($null -ne $firstDownAt) {
+            $firstUpAfterDownAt = $elapsed
+            break
+        }
+        $downProbes = 0
+    } else {
+        if ($elapsed.TotalSeconds -ge $probeStartSec) {
+            $downProbes++
+            if ($downProbes -ge $MinDownProbes -and $null -eq $firstDownAt) {
+                $firstDownAt = $elapsed
+                Write-Host ("[{0,6:F1}s from SCP] Link appears down (ICMP failed x{1})." -f $elapsed.TotalSeconds, $downProbes)
+            }
+        }
     }
-    Write-Host ("[{0,6:F1}s] waiting for ping..." -f $probeElapsed.TotalSeconds)
+
     $sleepMs = [int]([Math]::Max(50, [Math]::Round($IntervalSeconds * 1000.0)))
     Start-Sleep -Milliseconds $sleepMs
 }
 
-$durAfterGraceToUp = $swProbe.Elapsed.TotalSeconds
 $durTotal = $swTotal.Elapsed.TotalSeconds
+$postGraceToUp = ($firstUpAfterDownAt - $tGraceEnd).TotalSeconds
 
 Write-Host ""
 Write-Host "========== SYSUPGRADE RECOVERY REPORT =========="
 Write-Host ("Target:                 {0}" -f $Target)
 Write-Host ("Image:                  {0}" -f $imageFull)
 if ($PlinkNoPassword) {
-    Write-Host ("Auth:                   Plink empty password ({0}, {1})" -f $pscpExe, $plinkExe)
+    Write-Host ("Auth:                   Plink -pwfile ({0}, {1})" -f $pscpExe, $plinkExe)
 } else {
     Write-Host ("SSH key:                {0}" -f $SshKey)
 }
 Write-Host ("SCP upload:             {0:F1} s" -f $durScp.TotalSeconds)
 Write-Host ("SSH sysupgrade:         {0:F1} s" -f $durSsh.TotalSeconds)
-Write-Host ("Initial grace:          {0} s   (no success judgment during this window)" -f $InitialGraceSeconds)
-Write-Host ("After grace -> ping OK: {0:F1} s" -f $durAfterGraceToUp)
-Write-Host ("Total (SCP start -> ping OK): {0:F1} s" -f $durTotal)
+Write-Host ("Initial grace:          {0} s   (after command/disconnect; not flash-complete)" -f $InitialGraceSeconds)
+Write-Host ("Total (SCP->ping OK):   {0:F1} s   (after grace, first ping OK following observed down)" -f $durTotal)
+Write-Host ("After grace->ping OK:   {0:F1} s   (grace end -> first ping OK after down)" -f $postGraceToUp)
+if ($null -ne $firstDownAt -and $null -ne $firstUpAfterDownAt) {
+    $pure = ($firstUpAfterDownAt - $firstDownAt).TotalSeconds
+    Write-Host ("Down -> up:             {0:F1} s   (sustained ICMP fail after grace -> first ICMP OK)" -f $pure)
+    Write-Host ("First ICMP down at:     {0:F1} s from SCP start" -f $firstDownAt.TotalSeconds)
+}
+Write-Host ("Note:                   ICMP recovery is not proof sysupgrade NAND completed; use LED / serial if unsure.")
 Write-Host "================================================"
 
 exit 0
