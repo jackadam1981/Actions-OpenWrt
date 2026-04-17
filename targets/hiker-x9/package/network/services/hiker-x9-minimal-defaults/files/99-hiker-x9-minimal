@@ -24,6 +24,11 @@ uci set network.LanBackup.device=br-lan
 uci set network.LanBackup.ipaddr=192.168.100.1
 uci set network.LanBackup.netmask=255.255.255.0
 
+# WAN 默认常为 dhcp：未插上行线时 udhcpc 长时间重试会拖慢 netifd / 防火墙 / dropbear 就绪。
+if uci -q show network.wan >/dev/null 2>&1; then
+	uci set network.wan.proto='none'
+fi
+
 # Do not run a DHCP client on the same br-lan as the static LAN.
 # It adds boot noise and may delay netifd/rc completion on devices
 # where no upstream DHCP server is present.

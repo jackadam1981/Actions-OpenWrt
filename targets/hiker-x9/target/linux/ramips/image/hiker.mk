@@ -25,6 +25,7 @@ define Device/hiker_x9-minimal
 		luci-i18n-base-zh-cn \
 		$(HIKER_X9_STRIP) \
 		hiker-x9-minimal-defaults \
+		urngd \
 		-wpad-basic-mbedtls \
 		-iw -iwinfo
 endef
@@ -35,10 +36,8 @@ define Device/hiker_x9-minimal-baseline
 	DEVICE_MODEL := Hiker X9 Minimal (baseline)
 	DEVICE_DTS := rt5350_hiker_x9-minimal
 	SUPPORTED_DEVICES := hiker,x9-minimal-baseline hiker,x9 HIKER
-	# Baseline：不写 DEVICE_PACKAGES（与上游 rt5350 路由多数条目一致，见 openwrt
-	# target/linux/ramips/image/rt305x.mk 中 dlink_dir-300-b7、omnima_miniembplug 等）→
-	# ramips/rt305x/target.mk 的 DEFAULT_PACKAGES + target.mk 路由器默认栈。不装 hiker defaults、
-	# 不强行 LuCI、不做 HIKER_X9_STRIP。
+	# 上游默认栈 + urngd（减轻首启 dropbearkey 等因熵不足变慢）。
+	DEVICE_PACKAGES := urngd
 endef
 TARGET_DEVICES += hiker_x9-minimal-baseline
 
@@ -54,6 +53,7 @@ define Device/hiker_x9-factory
 		$(HIKER_X9_STRIP) \
 		hiker-x9-breed-autoflash \
 		hiker-x9-minimal-defaults \
+		urngd \
 		-wpad-basic-mbedtls \
 		-iw -iwinfo
 	IMAGES += factory.bin
