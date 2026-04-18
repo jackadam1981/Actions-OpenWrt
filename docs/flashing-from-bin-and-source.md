@@ -12,7 +12,7 @@
 
 | 目标目录 | OpenWrt target | 设备 / profile | 典型文件名模式 | 说明 |
 |----------|----------------|----------------|----------------|------|
-| [targets/hiker-x9](../targets/hiker-x9) | `ramips` / `rt305x` | `hiker_x9-minimal` 等 **7** 个功能 profile + **`hiker_x9-factory`**（共 **8** 个 Device） | `*-hiker_x9-*-squashfs-sysupgrade.bin`；**`hiker_x9-factory` 另产 `*-factory.bin`** | 自定义板，见 [hiker.mk](../targets/hiker-x9/target/linux/ramips/image/hiker.mk)；`IMAGE_SIZE := 7872k`。**从官版 / 原厂 Web 或恢复环境首次刷入**：请使用 **`hiker_x9-factory` 对应的 `factory.bin`**（本仓按实机流程验证，**官版可直接刷入该 factory**）。已运行本固件后，各功能 profile 仍以 **`sysupgrade.bin`** 升级为主。 |
+| [targets/hiker-x9](../targets/hiker-x9) | `ramips` / `rt305x` | 多个 Device（含 **`hiker_x9-minimal`**、**`hiker_x9-standard`**、**`hiker_x9-minimal-baseline`**、**`hiker_x9-factory`** 及打印 / VirtualHere 等 profile，以 [hiker.mk](../targets/hiker-x9/target/linux/ramips/image/hiker.mk) 为准） | `*-hiker_x9-*-squashfs-sysupgrade.bin`；**`hiker_x9-factory` 另产 `*-factory.bin`** | 自定义板，见 `hiker.mk`；`IMAGE_SIZE := 7872k`。**从官版 / 原厂 Web 或恢复环境首次刷入**：请使用 **`hiker_x9-factory` 对应的 `factory.bin`**（本仓按实机流程验证，**官版可直接刷入该 factory**）。已运行本固件后，各功能 profile 仍以 **`sysupgrade.bin`** 升级为主。 |
 | [targets/dir-505](../targets/dir-505) | `ath79` / `generic` | `dlink_dir-505` | `*-dlink_dir-505-squashfs-sysupgrade.bin`、`*-dlink_dir-505-initramfs-kernel.bin` | 上游设备；`generic.mk` 中仅 `IMAGE_SIZE`，默认生成 sysupgrade / initramfs（见下文上游引用）。 |
 | [targets/x86-64](../targets/x86-64) | `x86` / `64` | `generic` | `*-ext4-combined.img.gz` 等 | 虚拟机 / PC；刷写方式为磁盘镜像或 `sysupgrade.tar`，与路由器 NOR SPI 流程不同。 |
 

@@ -1,0 +1,65 @@
+#!/bin/sh
+# Hiker X9 standard profile (full router stack + LuCI + WiFi)
+
+BOOT_S="$(cut -d. -f1 /proc/uptime 2>/dev/null)"
+[ -n "$BOOT_S" ] && logger -t hiker-std "uci-defaults start at +${BOOT_S}s"
+
+mkdir -p /etc/rc.button
+cp -f /usr/share/hiker-x9-standard/banner /etc/banner
+
+REV=""
+if [ -f /etc/openwrt_release ]; then # shellcheck disable=SC1091
+	. /etc/openwrt_release
+	REV="${DISTRIB_REVISION:-}"
+fi
+
+[ -x /etc/init.d/hiker-boot-metrics ] && /etc/init.d/hiker-boot-metrics enable 2>/dev/null
+
+# Align LAN with OEM admin segment (see oem-dt/collected-192.168.168.1/).
+if uci -q show network.lan >/dev/null 2>&1; then
+	uci set network.lan.proto='static'
+	uci set network.lan.ipaddr='192.168.168.1'
+	uci set network.lan.netmask='255.255.255.0'
+fi
+
+if uci -q show network.wan >/dev/null 2>&1; then
+	uci set network.wan.proto='none'
+fi
+
+if [ -n "$REV" ]; then
+	REV_HOST="$(printf '%s' "$REV" | tr -c 'A-Za-z0-9-' '-')"
+	uci set system.@system[0].hostname="HikerStandard-${REV_HOST}" 2>/dev/null
+	# Same DTS as minimal → board.json name is still "Hiker X9 Minimal"; relabel for LuCI.
+	if [ -f /etc/board.json ]; then
+		sed -i "s/\"name\": \"Hiker X9 Minimal\"/\"name\": \"Hiker X9 Standard (${REV})\"/" /etc/board.json 2>/dev/null
+	fi
+	{
+		echo ""
+		echo " Build : ${REV}"
+	} >> /etc/banner
+else
+	uci set system.@system[0].hostname=HikerStandard 2>/dev/null
+	if [ -f /etc/board.json ]; then
+		sed -i 's/"name": "Hiker X9 Minimal"/"name": "Hiker X9 Standard"/' /etc/board.json 2>/dev/null
+	fi
+fi
+uci set system.@system[0].zonename=Asia/Shanghai 2>/dev/null
+uci set system.@system[0].timezone=CST-8 2>/dev/null
+
+led_exists=$(uci show system 2>/dev/null | grep "\.name='led_r'" | cut -d'=' -f1 | cut -d'.' -f1-2 | head -1)
+if [ -z "$led_exists" ]; then
+	uci add system led >/dev/null 2>&1
+	uci set system.@led[-1].name=led_r 2>/dev/null
+	uci set system.@led[-1].sysfs=red:led_r 2>/dev/null
+	uci set system.@led[-1].trigger=netdev 2>/dev/null
+	uci set system.@led[-1].dev=br-lan 2>/dev/null
+	uci add_list system.@led[-1].mode=tx 2>/dev/null
+	uci add_list system.@led[-1].mode=rx 2>/dev/null
+fi
+
+uci commit network 2>/dev/null
+uci commit system 2>/dev/null
+
+[ -n "$BOOT_S" ] && logger -t hiker-std "uci-defaults done at +$(cut -d. -f1 /proc/uptime 2>/dev/null)s"
+
+exit 0
