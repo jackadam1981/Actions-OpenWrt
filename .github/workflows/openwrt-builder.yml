@@ -343,6 +343,8 @@ jobs:
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
+        echo "=== Firmware images in this artifact (expect *squashfs-sysupgrade.bin for flash; *initramfs-kernel.bin is ramdisk only) ==="
+        ls -lh *.bin 2>/dev/null || true
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
