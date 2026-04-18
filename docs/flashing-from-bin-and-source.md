@@ -148,5 +148,5 @@ binwalk -e ./openwrt-*-sysupgrade.bin   # 若已安装，查看嵌套段
 ## 参考链接
 
 - OpenWrt 旧 Wiki（DIR-505）：https://wiki.openwrt.org/toh/d-link/dir-505  
-- OpenWrt 源码（ath79 generic 设备，与默认 CI 分支一致时可换 `openwrt-24.10`）：https://github.com/openwrt/openwrt/tree/openwrt-24.10/target/linux/ath79  
+- OpenWrt 源码（ath79 generic 设备；本仓 CI 默认 `openwrt-25.12`）：https://github.com/openwrt/openwrt/tree/openwrt-25.12/target/linux/ath79  
 - GitHub Node 20 弃用说明（与工作流无关，仅供 CI 维护者）：https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

@@ -31,7 +31,7 @@ jobs:
       - name: Get commit hash (openwrt/openwrt)
         id: getHash
         run: |
-          git clone --depth 1 https://github.com/openwrt/openwrt -b openwrt-24.10 .
+          git clone --depth 1 https://github.com/openwrt/openwrt -b openwrt-25.12 .
           echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Compare commit hash
