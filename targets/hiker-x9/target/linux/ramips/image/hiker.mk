@@ -53,9 +53,10 @@ define Device/hiker_x9-standard
 	# No luci-i18n-base-en: stable feed omits it (English is luci-base default).
 	# Size: IMAGE_SIZE 7872k — omit dnsmasq-full / wpad-openssl / relayd / usbutils
 	# so check-size passes on 25.12; opkg install those if needed.
+	# Intentionally no hiker-x9-standard-defaults while investigating very slow first boot
+	# (re-add when root cause is found; then LAN 192.168.100.1 / WAN none etc. return).
 	DEVICE_PACKAGES := \
 		urngd \
-		hiker-x9-standard-defaults \
 		luci luci-i18n-base-zh-cn luci-theme-bootstrap \
 		luci-proto-ipv6 luci-proto-ppp \
 		-wpad-basic-mbedtls wpad-mbedtls iw iwinfo \
