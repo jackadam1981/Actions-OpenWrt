@@ -133,27 +133,25 @@ if (-not $preOk) {
 }
 Write-Host "Pre-check OK."
 
-$sshArgs = [System.Collections.Generic.List[string]]::new()
-$sshArgs.AddRange(@(
+$sshArgs = @(
     "-i", $SshKey,
     "-o", "BatchMode=yes",
     "-o", "StrictHostKeyChecking=accept-new",
     "-o", "ConnectTimeout=10",
     "-o", "ConnectionAttempts=1"
-))
+)
 if ($LegacySshRsaHostKey) {
-    $sshArgs.Add("-o")
-    $sshArgs.Add("HostkeyAlgorithms=+ssh-rsa")
-    $sshArgs.Add("-o")
-    $sshArgs.Add("PubkeyAcceptedAlgorithms=+ssh-rsa")
+    $sshArgs = $sshArgs + @(
+        "-o", "HostkeyAlgorithms=+ssh-rsa",
+        "-o", "PubkeyAcceptedAlgorithms=+ssh-rsa"
+    )
 }
-$sshArgs.Add("${SshUser}@${Target}")
-$sshArgs.Add("sync; reboot")
+$sshArgs = $sshArgs + @("${SshUser}@${Target}", "sync; reboot")
 
 Write-Host "Issuing reboot via SSH..."
 $swTotal = [Diagnostics.Stopwatch]::StartNew()
 try {
-    & ssh.exe @($sshArgs.ToArray()) 2>&1 | Out-Null
+    & ssh.exe @sshArgs 2>&1 | Out-Null
 } catch {
     # 连接被对端 reset 为常态
 }
