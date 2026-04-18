@@ -1,5 +1,5 @@
 #!/bin/sh
-# 在 OEM / OpenWrt 设备上执行（ash），导出版本与 opkg 清单等，便于同步到本仓库 oem-dt/。
+# 在 OEM / OpenWrt 设备上执行（ash），导出版本、opkg 清单与内核相关信息，便于同步到本仓库 oem-dt/。
 # 用法（IP 按设备 LAN，当前 OEM 示例见 oem-dt/README.md）：
 #   ssh root@192.168.168.1 'sh -s' < collect-oem-snapshot.sh
 # 或上传到设备后：sh collect-oem-snapshot.sh
@@ -58,9 +58,45 @@ else
 	echo "0" >"$OUT/opkg_count.txt"
 fi
 
+# --- kernel（运行中内核与模块；与 rootfs 包列表互补）---
+cat /proc/version >"$OUT/proc_version.txt" 2>&1 || echo "(missing)" >"$OUT/proc_version.txt"
+cat /proc/cmdline >"$OUT/proc_cmdline.txt" 2>&1 || echo "(missing)" >"$OUT/proc_cmdline.txt"
+cat /proc/cpuinfo >"$OUT/proc_cpuinfo.txt" 2>&1 || echo "(missing)" >"$OUT/proc_cpuinfo.txt"
+
+KVER=$(uname -r)
+if [ -d "/lib/modules/$KVER" ]; then
+	ls -la "/lib/modules/$KVER" >"$OUT/kernel_modules_dir_ls.txt" 2>&1 || true
+	find "/lib/modules/$KVER" -name '*.ko' 2>/dev/null | sort >"$OUT/kernel_modules_ko_list.txt" || true
+	wc -l <"$OUT/kernel_modules_ko_list.txt" 2>/dev/null | tr -d ' ' >"$OUT/kernel_modules_ko_count.txt" || echo "0" >"$OUT/kernel_modules_ko_count.txt"
+else
+	echo "(no /lib/modules/$KVER)" >"$OUT/kernel_modules_dir_ls.txt"
+	: >"$OUT/kernel_modules_ko_list.txt"
+	echo "0" >"$OUT/kernel_modules_ko_count.txt"
+fi
+
+if [ -r /proc/config.gz ]; then
+	if zcat /proc/config.gz >"$OUT/kernel_config.txt" 2>/dev/null; then
+		wc -l <"$OUT/kernel_config.txt" | tr -d ' ' >"$OUT/kernel_config_linecount.txt"
+	else
+		echo "(zcat /proc/config.gz failed)" >"$OUT/kernel_config.txt"
+		echo "0" >"$OUT/kernel_config_linecount.txt"
+	fi
+else
+	echo "(no /proc/config.gz; kernel likely built without CONFIG_IKCONFIG / CONFIG_IKCONFIG_PROC)" >"$OUT/kernel_config.txt"
+	wc -l <"$OUT/kernel_config.txt" | tr -d ' ' >"$OUT/kernel_config_linecount.txt"
+fi
+
+dmesg 2>/dev/null | head -n 160 >"$OUT/dmesg_head.txt" || true
+
+grep -E '^(kernel|kmod-)' "$OUT/opkg_list_installed.txt" 2>/dev/null | sort >"$OUT/opkg_kernel_kmod.txt" || : >"$OUT/opkg_kernel_kmod.txt"
+wc -l <"$OUT/opkg_kernel_kmod.txt" 2>/dev/null | tr -d ' ' >"$OUT/opkg_kernel_kmod_count.txt" || echo "0" >"$OUT/opkg_kernel_kmod_count.txt"
+
 BN=$(basename "$OUT")
 echo "完成。包数量（opkg list-installed 行数）: $(cat "$OUT/opkg_count.txt")"
+echo "内核模块 .ko 数量: $(cat "$OUT/kernel_modules_ko_count.txt")；kernel/kmod opkg 行数: $(cat "$OUT/opkg_kernel_kmod_count.txt")；kernel_config 行数: $(cat "$OUT/kernel_config_linecount.txt")"
 echo "请打包拷回 PC（在设备上执行）:"
 echo "  cd $(dirname "$OUT") && tar czf ${BN}.tgz ${BN} && ls -la ${BN}.tgz"
 echo "在 PC 上拉取:"
-echo "  scp root@<路由器IP>:$(dirname "$OUT")/${BN}.tgz ."
+echo "  scp -O root@<ROUTER_IP>:$(dirname "$OUT")/${BN}.tgz ."
+
+exit 0

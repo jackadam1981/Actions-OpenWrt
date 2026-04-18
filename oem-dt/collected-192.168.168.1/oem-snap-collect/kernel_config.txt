@@ -1,0 +1,1 @@
+(no /proc/config.gz; kernel likely built without CONFIG_IKCONFIG / CONFIG_IKCONFIG_PROC)

@@ -1,0 +1,1 @@
+Linux version 3.18.140 (oem@oem-D3543-A1) (gcc version 4.8.3 (OpenWrt/Linaro GCC 4.8-2014.04 unknown) ) #11 Thu Sep 25 07:42:55 CST 2025

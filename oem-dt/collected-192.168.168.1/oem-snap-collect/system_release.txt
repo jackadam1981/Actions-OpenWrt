@@ -9,6 +9,19 @@ DISTRIB_TAINTS='no-all'
 
 === /etc/os-release ===
 ../usr/lib/os-release
-
 === /usr/lib/os-release ===
-（完整内容见同目录 `usr_lib_os_release.txt`；本机 `/etc/os-release` 仅为存根。）
+NAME="OpenWrt"
+VERSION="15.05, Chaos Calmer"
+ID="openwrt"
+ID_LIKE="openwrt"
+PRETTY_NAME="OpenWrt Chaos Calmer 15.05"
+VERSION_ID="15.05"
+HOME_URL="%m"
+BUILD_ID="unknown"
+OpenWRT_BOARD="ramips/rt305x"
+OpenWRT_TAINTS="no-all"
+OpenWRT_DEVICE_MANUFACTURER="OpenWrt"
+OpenWRT_DEVICE_MANUFACTURER_URL="%m"
+OpenWRT_DEVICE_PRODUCT="Generic"
+OpenWRT_DEVICE_REVISION="v0"
+OpenWRT_RELEASE="Chaos Calmer"

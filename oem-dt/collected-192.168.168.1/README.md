@@ -4,6 +4,7 @@
 - **来源**：`ssh` 至 `root@192.168.168.1`，固定目录 `/tmp/oem-snap-collect`，打包为 `oem-snap-collect.tgz`。
 - **发行版摘要**：`openwrt_release` 为 **Chaos Calmer 15.05**（`ramips/rt305x`）；内核见同目录 `uname.txt`（**3.18.140 #11**）。
 - **已装包数量**：`opkg_count.txt` → **182**（见 `opkg_list_installed.txt`）。
+- **内核（本次扩展）**：`proc_version.txt`（**gcc 4.8.3**、**oem@oem-D3543-A1** 等编译环境串）、`proc_cmdline.txt`、`proc_cpuinfo.txt`、`dmesg_head.txt`；**`/lib/modules/` 下 `.ko` 共 162 个**（`kernel_modules_ko_count.txt`）；**`kernel`/`kmod-*` opkg 条目 84 行**（`opkg_kernel_kmod.txt`）。**无 `/proc/config.gz`**，无法在运行中导出完整 `.config`（见 `kernel_config.txt` 说明）。
 - **`/etc/os-release`**：该固件上为存根（内容为一行路径）；完整字段见 **`usr_lib_os_release.txt`**（自 `/usr/lib/os-release` 补采）。
 
 原始 tarball：`../oem-snap-collect.tgz`（与 `oem-snap-collect/` 内容对应）。
