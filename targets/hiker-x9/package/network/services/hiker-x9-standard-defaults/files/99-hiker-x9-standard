@@ -15,10 +15,10 @@ fi
 
 [ -x /etc/init.d/hiker-boot-metrics ] && /etc/init.d/hiker-boot-metrics enable 2>/dev/null
 
-# Align LAN with OEM admin segment (see oem-dt/collected-192.168.168.1/).
+# 与 minimal 相同 LAN：192.168.100.1
 if uci -q show network.lan >/dev/null 2>&1; then
 	uci set network.lan.proto='static'
-	uci set network.lan.ipaddr='192.168.168.1'
+	uci set network.lan.ipaddr='192.168.100.1'
 	uci set network.lan.netmask='255.255.255.0'
 fi
 

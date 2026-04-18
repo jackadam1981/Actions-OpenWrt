@@ -19,7 +19,7 @@ define Package/hiker-x9-standard-defaults
 endef
 
 define Package/hiker-x9-standard-defaults/description
- First-boot banner, network (LAN 192.168.168.1), firewall zone hints,
+ First-boot banner, network (LAN 192.168.100.1, same as minimal), firewall zone hints,
  and LED for the standard (full router + LuCI + WiFi) image.
  Reset: hiker-x9-reset-button. See targets/README.md and oem-dt/
  collected snapshot for OEM alignment notes (not a 1:1 package copy).
