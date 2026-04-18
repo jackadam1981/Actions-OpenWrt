@@ -64,6 +64,8 @@ env:
   # CCACHE_DIR is set in "Prepare workdir" (must match WORKDIR).
   CCACHE_COMPRESS: 'true'
   CCACHE_MAXSIZE: 2G
+  # self-hosted：WORKDIR 下 dl/.ccache 持久化，不再走 actions/cache（省流量与时间）。
+  # github-hosted：每次干净工作区，仍用 restore/save 加速。
   # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -219,6 +221,11 @@ jobs:
         echo "WORKDIR=$WD" >> "$GITHUB_ENV"
         echo "CCACHE_DIR=$WD/.ccache" >> "$GITHUB_ENV"
 
+    - name: Self-hosted — skip GitHub Actions cache for dl/ccache
+      if: runner.environment == 'self-hosted'
+      run: |
+        echo "::notice::Self-hosted runner: not using actions/cache for openwrt/dl and .ccache (reuse persistent WORKDIR: ${{ env.WORKDIR }})"
+
     - name: Clone or update source code
       working-directory: ${{ env.WORKDIR }}
       run: |
@@ -235,6 +242,7 @@ jobs:
         ln -sf "$WORKDIR/openwrt" "$GITHUB_WORKSPACE/openwrt"
 
     - name: Restore OpenWrt dl + ccache
+      if: runner.environment != 'self-hosted'
       uses: actions/cache/restore@v4
       with:
         path: |
@@ -318,7 +326,7 @@ jobs:
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' | head -5 || true
 
     - name: Save OpenWrt dl + ccache
-      if: (!cancelled())
+      if: (!cancelled()) && runner.environment != 'self-hosted'
       uses: actions/cache/save@v4
       with:
         path: |
