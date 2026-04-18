@@ -9,3 +9,18 @@
 - **`/etc/os-release`**：该固件上为存根（内容为一行路径）；完整字段见 **`usr_lib_os_release.txt`**（自 `/usr/lib/os-release` 补采）。
 
 原始 tarball：`../oem-snap-collect.tgz`（与 `oem-snap-collect/` 内容对应）。
+
+## 重启恢复实测（`measure-reboot-recovery.ps1`）
+
+在 **LAN `192.168.168.1`**、**`-LegacySshRsaHostKey`**、**默认探测 TCP 80**、**`InitialGraceSeconds=30`** 条件下（详见 [`targets/README.md`](../../targets/README.md)「重启恢复实测」表）：
+
+| 指标 | 秒（s） |
+|------|--------|
+| SSH→首次 ICMP（宽限后） | **122.8** |
+| 宽限结束→ICMP | **91.2** |
+| 掉线→通 | **88.5** |
+| 首次掉线（相对 SSH） | **34.3** |
+| ICMP→TCP80 | **0.1** |
+| SSH→TCP80 | **122.8** |
+
+记录日期：**2026-04-18**（与 `targets/README.md` 表中该行一致）。

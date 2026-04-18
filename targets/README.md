@@ -149,3 +149,11 @@
 | D-Link DIR-505 | **25.12.0 ath79** sysupgrade | 自 ar71xx 升、`sysupgrade -F`、TCP80 | **110.1** | 18.0 | 68.5 | 92.1 | **76.7** | **186.7** | ping 后 Web 仍晚约 77s |
 | D-Link DIR-505 | **19.07.8** ar71xx 刷回 | 自 25.12 ath79、`sysupgrade -F`、TCP80 | **76.9** | 12.0 | 40.1 | 64.9 | **44.1** | **121.0** | ping 后 Web 晚约 44s |
 
+### 重启恢复实测（[`measure-reboot-recovery.ps1`](../scripts/measure-reboot-recovery.ps1)）
+
+与上表 **sysupgrade / SCP** 口径不同：本表为 **`ssh … reboot` 后** 本机探测；**SSH→ICMP** = 自 SSH 下发 `reboot` 起至**宽限后**首次 ping 通；**宽限→ICMP** = 宽限结束至该次 ping 通；**掉线→通** = 宽限后首次持续 ICMP 失败至再次 ping 通；**首次掉线** = 自 SSH 起至判定掉线。**默认测 TCP 80**（`-ProbeTcpPortAfterPing 0` 可仅 ICMP）。
+
+| 设备 | 场景 / 条件 | SSH→ICMP | 宽限→ICMP | 掉线→通 | 首次掉线 (SSH 后) | ICMP→TCP80 | SSH→TCP80 | 备注 |
+|------|-------------|----------|----------|---------|------------------|------------|-----------|------|
+| Hiker X9 OEM | LAN **192.168.168.1**，`-LegacySshRsaHostKey`，默认 TCP80、宽限 30s | **122.8** | **91.2** | **88.5** | **34.3** | **0.1** | **122.8** | 2026-04-18 单次；ICMP 与 Web 几乎同时 |
+
