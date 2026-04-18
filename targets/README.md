@@ -46,6 +46,7 @@
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
 - **OpenWrt / 内核口径（含 `hiker_x9-standard` 与其它 X9 profile）**：默认 CI 见 [`.github/workflows/openwrt-builder.yml`](../.github/workflows/openwrt-builder.yml)：**`REPO_BRANCH=openwrt-25.12`**、源码 **`https://github.com/openwrt/openwrt`**，即官方 **25.12 稳定系列**（截至上游说明当前稳定线为 **25.12**，如 **v25.12.2**；刷机后 `/etc/openwrt_release` 一般为 **`25.12.x`**，**不是** **SNAPSHOT** / **master**），**不是** OEM 的 **Chaos Calmer 15.05**。内核与上游 **`target/linux/ramips`** 一致；该分支上 [`Makefile`](https://github.com/openwrt/openwrt/blob/openwrt-25.12/target/linux/ramips/Makefile) 当前为 **`KERNEL_PATCHVER:=6.12`**（**精确 `6.12.x`** 以你那次编译的 tag/commit 为准）。若要换 **后续新稳定系列**（如未来 **26.xx**），改 workflow 里 **`REPO_BRANCH`** 并在本地试编确认 overlay 无 API 差异即可。
 - **仅编 X9 标准版（省 self-hosted 时间）**：手动 **OpenWrt Builder** 时 **`only_targets`** 填 **`hiker-x9`**，**`hiker_x9_profile`** 选 **`standard-only`**（使用 `targets/hiker-x9/.config.standard-only`，只勾选 `hiker_x9-standard`）；Runner 选 **self-hosted** 即可在自建机上只编标准版镜像。
+- **仅编 X9 minimal**：同上，**`hiker_x9_profile`** 选 **`minimal-only`**（`targets/hiker-x9/.config.minimal-only`，只勾选 **`hiker_x9-minimal`**）。配合 **self-hosted** 持久 **`WORKDIR`** 下的 **`dl`** / **`.ccache`**，增量编译通常明显快于全 profile。
 
 ### 首启很慢、SSH 很久才通（常见原因）
 
