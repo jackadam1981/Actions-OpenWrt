@@ -69,7 +69,10 @@
   不传 -i 私钥、不用 BatchMode=yes，依赖 ssh 默认（如空密码 root 或 agent）。与 -LegacySshRsaHostKey 常一起用于 OEM。
 
 .PARAMETER RecoveryTargets
-  刷机后用于「恢复探测」的 LAN 地址，逗号分隔（如 192.168.1.1）。空则与 -Target 相同。典型：SSH 连 192.168.168.1，刷完新系统在 192.168.1.1。
+  刷机后用于「恢复探测」的 LAN 地址，逗号分隔（如 192.168.1.1）。空则与 -Target 相同。非空时默认会把 -Target 一并加入探测列表（新固件可能仍占用原 IP）；若只想 ping 下列地址、不含 -Target，请加 -RecoveryTargetsExclusive。
+
+.PARAMETER RecoveryTargetsExclusive
+  与 -RecoveryTargets 同用时：恢复阶段**仅** ping/TCP 探测 RecoveryTargets 中的地址，不把 -Target 合并进来（旧行为）。
 
 .PARAMETER DownDetectTarget
   判定「已掉线」时 ping 的地址；默认同 -Target。与 -RecoveryTargets 不同时，先等本地址连续失败再等恢复地址任一 ping 通。
@@ -93,7 +96,7 @@
   .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.1.1 -Image .\Firmware\sysupgrade.bin -PlinkNoPassword -PlinkHostKey "SHA256:YOUR_FINGERPRINT"
 
 .EXAMPLE
-  .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.168.1 -Image .\Firmware\*.bin -RecoveryTargets 192.168.1.1 -LegacySshRsaHostKey -ScpLegacyProtocol -NoSshIdentity -NoKeepConfig -ForceImage -ProbeTcpPortAfterPing 80
+  .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.168.1 -Image .\Firmware\*.bin -RecoveryTargets 192.168.1.1 -DownDetectTarget 192.168.168.1 -LegacySshRsaHostKey -ScpLegacyProtocol -NoSshIdentity -NoKeepConfig -ForceImage -ProbeTcpPortAfterPing 80
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -122,7 +125,8 @@ param(
     [switch] $ScpLegacyProtocol,
     [switch] $NoSshIdentity,
     [string] $RecoveryTargets = "",
-    [string] $DownDetectTarget = ""
+    [string] $DownDetectTarget = "",
+    [switch] $RecoveryTargetsExclusive
 )
 
 Set-StrictMode -Version 3
@@ -154,6 +158,19 @@ function Test-IcmpAnyReachable {
     return $false
 }
 
+function Get-FirstIcmpReachableHost {
+    param(
+        [string[]] $Hosts,
+        [int] $TimeoutMs
+    )
+    foreach ($h in $Hosts) {
+        if ([string]::IsNullOrWhiteSpace($h)) { continue }
+        $t = $h.Trim()
+        if (Test-IcmpReachable -HostOrIp $t -TimeoutMs $TimeoutMs) { return $t }
+    }
+    return $null
+}
+
 function Test-TcpAnyOpen {
     param(
         [string[]] $Hosts,
@@ -165,6 +182,20 @@ function Test-TcpAnyOpen {
         if (Test-TcpPortOpen -HostOrIp $h.Trim() -Port $Port -ConnectTimeoutMs $ConnectTimeoutMs) { return $true }
     }
     return $false
+}
+
+function Get-FirstTcpOpenHost {
+    param(
+        [string[]] $Hosts,
+        [int] $Port,
+        [int] $ConnectTimeoutMs
+    )
+    foreach ($h in $Hosts) {
+        if ([string]::IsNullOrWhiteSpace($h)) { continue }
+        $t = $h.Trim()
+        if (Test-TcpPortOpen -HostOrIp $t -Port $Port -ConnectTimeoutMs $ConnectTimeoutMs) { return $t }
+    }
+    return $null
 }
 
 function Test-TcpPortOpen {
@@ -282,16 +313,37 @@ if ($LegacySshRsaHostKey) {
     )
 }
 
+function Merge-UniqueHostList {
+    param([string[]] $OrderedHosts)
+    $seen = @{}
+    $out = New-Object System.Collections.Generic.List[string]
+    foreach ($x in $OrderedHosts) {
+        if ([string]::IsNullOrWhiteSpace($x)) { continue }
+        $t = $x.Trim()
+        if ($seen.ContainsKey($t)) { continue }
+        $seen[$t] = $true
+        [void]$out.Add($t)
+    }
+    return ,$out.ToArray()
+}
+
 if ([string]::IsNullOrWhiteSpace($RecoveryTargets)) {
-    $recoveryHostList = @($Target)
-} else {
-    $recoveryHostList = @(
+    $recoveryHostList = @($Target.Trim())
+} elseif ($RecoveryTargetsExclusive) {
+    $recoveryHostList = Merge-UniqueHostList @(
         $RecoveryTargets.Split(",") |
             ForEach-Object { $_.Trim() } |
             Where-Object { $_ -ne "" }
     )
+} else {
+    $parsed = @(
+        $RecoveryTargets.Split(",") |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -ne "" }
+    )
+    $recoveryHostList = Merge-UniqueHostList (@($Target.Trim()) + $parsed)
 }
-$downHost = if ([string]::IsNullOrWhiteSpace($DownDetectTarget)) { $Target } else { $DownDetectTarget.Trim() }
+$downHost = if ([string]::IsNullOrWhiteSpace($DownDetectTarget)) { $Target.Trim() } else { $DownDetectTarget.Trim() }
 
 $swTotal = [Diagnostics.Stopwatch]::StartNew()
 
@@ -401,7 +453,14 @@ $firstDownAt = $null
 $firstUpAfterDownAt = $null
 
 $maxLabel = if ($MaxWaitSeconds -gt 0) { "${MaxWaitSeconds}s from SCP start" } else { "unlimited (SCP start)" }
-Write-Host "Probing recovery (max $maxLabel, interval ${IntervalSeconds}s): wait '$downHost' ICMP down, then any of [$($recoveryHostList -join ', ')] ICMP up."
+$recoveryListNote = if ([string]::IsNullOrWhiteSpace($RecoveryTargets)) {
+    "same as -Target"
+} elseif ($RecoveryTargetsExclusive) {
+    "-RecoveryTargets only"
+} else {
+    "-Target plus -RecoveryTargets (default merge)"
+}
+Write-Host "Probing recovery (max $maxLabel, interval ${IntervalSeconds}s): wait '$downHost' ICMP down, then any of [$($recoveryHostList -join ', ')] ICMP up ($recoveryListNote)."
 while ($true) {
     $elapsed = $swTotal.Elapsed
     if ($MaxWaitSeconds -gt 0 -and $elapsed.TotalSeconds -ge $MaxWaitSeconds) {
@@ -434,15 +493,18 @@ while ($true) {
 }
 
 Write-Host "Waiting for ICMP on recovery host(s)..."
+$recoveryIcmpHost = $null
+$recoveryTcpHost = $null
 while ($true) {
     $elapsed = $swTotal.Elapsed
     if ($MaxWaitSeconds -gt 0 -and $elapsed.TotalSeconds -ge $MaxWaitSeconds) {
         Write-Host ("TIMEOUT after {0:F1}s from SCP start (recovery ICMP)." -f $elapsed.TotalSeconds)
         exit 1
     }
-    if (Test-IcmpAnyReachable -Hosts $recoveryHostList -TimeoutMs $PingTimeoutMs) {
+    $recoveryIcmpHost = Get-FirstIcmpReachableHost -Hosts $recoveryHostList -TimeoutMs $PingTimeoutMs
+    if ($null -ne $recoveryIcmpHost) {
         $firstUpAfterDownAt = $elapsed
-        Write-Host ("[{0,6:F1}s from SCP] Recovery ICMP OK (one of: $($recoveryHostList -join ', '))." -f $elapsed.TotalSeconds)
+        Write-Host ("[{0,6:F1}s from SCP] Recovery ICMP OK (first up: {1}; probed: {2})." -f $elapsed.TotalSeconds, $recoveryIcmpHost, ($recoveryHostList -join ', '))
         break
     }
     $sleepMs = [int]([Math]::Max(50, [Math]::Round($IntervalSeconds * 1000.0)))
@@ -463,10 +525,11 @@ if ($ProbeTcpPortAfterPing -gt 0) {
             Write-Error "TIMEOUT: TCP port ${ProbeTcpPortAfterPing} did not accept connections within ${MaxWaitTcpSeconds}s after ICMP recovery."
             exit 1
         }
-        if (Test-TcpAnyOpen -Hosts $recoveryHostList -Port $ProbeTcpPortAfterPing -ConnectTimeoutMs $TcpConnectTimeoutMs) {
+        $recoveryTcpHost = Get-FirstTcpOpenHost -Hosts $recoveryHostList -Port $ProbeTcpPortAfterPing -ConnectTimeoutMs $TcpConnectTimeoutMs
+        if ($null -ne $recoveryTcpHost) {
             $durTcpAfterIcmpSec = $swTcp.Elapsed.TotalSeconds
             $totalScpToTcpSec = $swTotal.Elapsed.TotalSeconds
-            Write-Host ("TCP port {0} open {1:F1}s after ICMP recovery ({2:F1}s from SCP start)." -f $ProbeTcpPortAfterPing, $durTcpAfterIcmpSec, $totalScpToTcpSec)
+            Write-Host ("TCP port {0} on {1}: {2:F1}s after ICMP recovery ({3:F1}s from SCP start)." -f $ProbeTcpPortAfterPing, $recoveryTcpHost, $durTcpAfterIcmpSec, $totalScpToTcpSec)
             break
         }
         Write-Host ("[{0,6:F1}s after ICMP] TCP {1} not ready..." -f $swTcp.Elapsed.TotalSeconds, $ProbeTcpPortAfterPing)
@@ -480,6 +543,9 @@ Write-Host "========== SYSUPGRADE RECOVERY REPORT =========="
 Write-Host ("SSH/SCP target:         {0}" -f $Target)
 Write-Host ("Down-detect ICMP:      {0}" -f $downHost)
 Write-Host ("Recovery ICMP/TCP:     {0}" -f ($recoveryHostList -join ", "))
+if ($null -ne $recoveryIcmpHost) {
+    Write-Host ("First ICMP up on:      {0}" -f $recoveryIcmpHost)
+}
 Write-Host ("Image:                  {0}" -f $imageFull)
 if ($PlinkNoPassword) {
     Write-Host ("Auth:                   Plink -pwfile ({0}, {1})" -f $pscpExe, $plinkExe)
@@ -503,6 +569,9 @@ if ($null -ne $firstDownAt -and $null -ne $firstUpAfterDownAt) {
 if ($null -ne $durTcpAfterIcmpSec -and $null -ne $totalScpToTcpSec) {
     Write-Host ("ICMP -> TCP {0}:       {1:F1} s   (after first post-recovery ICMP OK)" -f $ProbeTcpPortAfterPing, $durTcpAfterIcmpSec)
     Write-Host ("Total (SCP->TCP {0}):   {1:F1} s" -f $ProbeTcpPortAfterPing, $totalScpToTcpSec)
+    if ($null -ne $recoveryTcpHost) {
+        Write-Host ("First TCP {0} on:      {1}" -f $ProbeTcpPortAfterPing, $recoveryTcpHost)
+    }
 }
 Write-Host ("Note:                   ICMP recovery is not proof sysupgrade NAND completed; use LED / serial if unsure.")
 Write-Host "================================================"
