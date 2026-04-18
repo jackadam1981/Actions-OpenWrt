@@ -34,7 +34,7 @@
   - **`hiker_x9-minimal-baseline`**（[`targets/_hiker-x9-baseline-only/.config`](_hiker-x9-baseline-only/.config)、workflow **`baseline_only`**）：与 **`minimal`** **同 DTS**；**包 = 上游小路由默认 + `urngd`**；**不装** `hiker-x9-minimal-defaults`。LAN 多为 **`192.168.1.1`**、常有 DHCP；**勿用** `192.168.100.1` 测。详见 [`targets/_hiker-x9-baseline-only/README.md`](_hiker-x9-baseline-only/README.md)。
   - **`hiker_x9-standard`（标准版）**：与 **`minimal`** **同 DTS**；**不**使用 `HIKER_X9_STRIP`（保留上游默认的 `dnsmasq` / `firewall` / `ppp` 等路由器栈）；另装 **`luci`**（完整 LuCI 元包）、**`dnsmasq-full`**、**`wpad-openssl`** + **`iw` / `iwinfo`**、常用 **USB 存储与 USB 网卡 kmod**、`relayd` 等，意图在 **OpenWrt 稳定版（CI 默认 `openwrt-25.12`）对应 feed** 上**贴近** [`oem-dt/collected-192.168.168.1/`](oem-dt/collected-192.168.168.1/) 里 OEM **`opkg_list_installed` 的角色**（**不是**把 182 条包名逐条搬进 `DEVICE_PACKAGES`：内核与包版本与 OEM 3.18 树不对齐；`panel-ap-setup`、`luci-theme-Rosy` 等也不在官方 feed）。首启 **`hiker-x9-standard-defaults`**：LAN **`192.168.100.1`**（与 **`minimal`** 一致，便于同一网段切换 profile）、WAN `proto=none`（与 `minimal` 同思路，避免未插上行时 `udhcpc` 拖慢启动）。若 CI **`check-size` 失败**，可在 `hiker.mk` 中先收窄体积（例如去掉 **`relayd`**、改 **`dnsmasq-full` → 默认 `dnsmasq`**、或 **`wpad-openssl` → `wpad-mbedtls`**）。
   - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`。**实测参考**：刷写后 LAN 侧用 `ping-until-up` 计时至首次 **ping 通** 约 **680 s**（约 11 min，随环境与存储略有出入）；**LAN 为 `192.168.100.1`**（由 `hiker-x9-minimal-defaults` 写入））
-  - `hiker_x9-factory`（**官版首刷**：与 minimal 类似的精简栈，另含 `**hiker-x9-breed-autoflash`**；生成 `**factory.bin`**，**可由官版 / 原厂 Web 或恢复流程直接刷入**；刷机后见下文「红灯不再闪烁」再断电操作）
+  - ~~`hiker_x9-factory`~~ **已移除**：曾提供 **`factory.bin` + Breed 首启辅助**；实机 **`oem-dt` 采集**对应的是**较老 OpenWrt 衍生环境**，**并非**「真正出厂首版」固件，该 profile **仅具历史参考意义**，继续维护收益有限。**官版 / 首刷 / 救砖**请按现场 **Breed、Web 恢复、TFTP、UART** 等选用可接受的镜像或工具；已在 OpenWrt 上运行时仍用各 profile 的 **`sysupgrade.bin`**。
   - `hiker_x9-p910nd`
   - `hiker_x9-p910nd-wifi`
   - `hiker_x9-p910nd-wifi-lite`
@@ -42,14 +42,14 @@
   - `hiker_x9-virtualhere-wifi`
   - `hiker_x9-both`（**p910nd + VirtualHere**，有线；与 `minimal` 相同 WiFi 用户态剔除策略）
   - `hiker_x9-both-wifi`（同上 + **AP WiFi 栈**）
-- `**package/network/services/`** 下与上述功能 profile 对应的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`**hiker-x9-standard-defaults**`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`（`**hiker_x9-factory` 复用 `hiker-x9-minimal-defaults`**，无单独 `*-factory-defaults`）；另有共用的 `**virtualhere-usb-server`** 与 `**hiker-x9-reset-button**`（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
+- `**package/network/services/`** 下与上述功能 profile 对应的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`**hiker-x9-standard-defaults**`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`；另有共用的 `**virtualhere-usb-server`** 与 `**hiker-x9-reset-button**`（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
 - **OpenWrt / 内核口径（含 `hiker_x9-standard` 与其它 X9 profile）**：默认 CI 见 [`.github/workflows/openwrt-builder.yml`](../.github/workflows/openwrt-builder.yml)：**`REPO_BRANCH=openwrt-25.12`**、源码 **`https://github.com/openwrt/openwrt`**，即官方 **25.12 稳定系列**（截至上游说明当前稳定线为 **25.12**，如 **v25.12.2**；刷机后 `/etc/openwrt_release` 一般为 **`25.12.x`**，**不是** **SNAPSHOT** / **master**），**不是** OEM 的 **Chaos Calmer 15.05**。内核与上游 **`target/linux/ramips`** 一致；该分支上 [`Makefile`](https://github.com/openwrt/openwrt/blob/openwrt-25.12/target/linux/ramips/Makefile) 当前为 **`KERNEL_PATCHVER:=6.12`**（**精确 `6.12.x`** 以你那次编译的 tag/commit 为准）。若要换 **后续新稳定系列**（如未来 **26.xx**），改 workflow 里 **`REPO_BRANCH`** 并在本地试编确认 overlay 无 API 差异即可。
 - **仅编 X9 标准版（省 self-hosted 时间）**：手动 **OpenWrt Builder** 时 **`only_targets`** 填 **`hiker-x9`**，**`hiker_x9_profile`** 选 **`standard-only`**（使用 `targets/hiker-x9/.config.standard-only`，只勾选 `hiker_x9-standard`）；Runner 选 **self-hosted** 即可在自建机上只编标准版镜像。
 
 ### 首启很慢、SSH 很久才通（常见原因）
 
-1. **Dropbear 首次生成 host key**（`/etc/dropbear/dropbear_*_host_key`）：在 RT5350 上若熵不足，`dropbearkey` 可能极慢。`hiker_x9-minimal` / `factory` 已加入 `**urngd`** 以加快随机数（仍建议首次上电多等一会儿）。
+1. **Dropbear 首次生成 host key**（`/etc/dropbear/dropbear_*_host_key`）：在 RT5350 上若熵不足，`dropbearkey` 可能极慢。`hiker_x9-minimal` 等已加入 `**urngd`** 的 profile 可加快随机数（仍建议首次上电多等一会儿）。
 2. **WAN 默认 `dhcp`、网线未插**：`udhcpc` 会长时间重试，拖慢 `netifd` 与后续服务。`99-hiker-x9-minimal` 在首启把 `**network.wan.proto` 置为 `none`**（纯 LAN 场景）；若你确实要用 WAN 拨号/上联，刷机后在 `/etc/config/network` 里改回 `dhcp`/`pppoe` 等。
 3. **自行对照日志**：SSH 能登录后执行 `**logread -e hiker-mini -e dropbear -e netifd`** 看 `uci-defaults` 与网络、SSH 启动的相对时间；`**dmesg | tail`** 看内核阶段是否异常慢。
 
@@ -101,7 +101,6 @@
 
 #### 读表提示
 
-- `**hiker_x9-factory`**：显式包与 minimal 同表思路，另加 `**hiker-x9-breed-autoflash`**，并定义 `**IMAGES += factory.bin`**；**官版首刷请选该 profile 产物 `factory.bin`**，勿与仅 `sysupgrade` 的 profile 混用在原厂恢复页上。
 - `**p910nd-wifi` / `virtualhere-wifi` / `both-wifi**`：`−wpad-basic-mbedtls` 与 `**+wpad-mbedtls**` 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
 - **每个功能 profile 对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile 维护；**复位键脚本** 集中在 `**hiker-x9-reset-button`**；`**both*`** 仍不复用 `**virtualhere-*-defaults**`。
 - `**minimal**`：保留 LuCI 与中文，`**+hiker-x9-minimal-defaults**`，且 `**−wpad-basic-mbedtls**`、`**−iw` / `−iwinfo**`；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
@@ -137,7 +136,7 @@
 
 ## 刷机与 bin 产物分析
 
-> **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。**从官版首刷**请使用 **hiker_x9-factory** 的 **factory.bin**（见上文与 [刷机文档](../docs/flashing-from-bin-and-source.md)）。
+> **刷机后请先看灯再操作**：写入完成并首次启动期间，**电源旁红灯往往会闪烁**（表示仍在写入或系统尚未就绪）。**请等到红灯不再闪烁**（一般为常亮或熄灭，以机型为准）**后再认为设备已正常启动**；在此之前请勿反复断电、拔电或强行中断，以免变砖或分区损坏。**首刷 / 救砖**入口因现场（Breed / Web / TFTP 等）而异，勿假定任意 **`sysupgrade.bin`** 均可被厂商恢复页接受；见 [刷机文档](../docs/flashing-from-bin-and-source.md)。
 
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
 

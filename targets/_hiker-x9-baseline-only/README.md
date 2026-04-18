@@ -34,4 +34,4 @@ CI **只能手动 dispatch** 时：先下 Artifact 拿 **`…hiker_x9-minimal-ba
 
 ## Breed 里刷 `*-squashfs-sysupgrade.bin`（无串口）
 
-本仓对 **官版 / 原厂首刷** 更推荐 **`hiker_x9-factory` → `factory.bin`**；其它 profile 的 **`sysupgrade.bin`** 多在 **已运行 OpenWrt** 下升级用。Breed 直刷 sysupgrade 若异常，可先 factory/minimal 确认链路，再在系统内做 baseline 的 sysupgrade。
+本仓 **已移除** **`hiker_x9-factory` / `factory.bin`**（采集用 OEM 为较老 OpenWrt 衍生，非真正出厂首版，见 [targets/README.md](../README.md)）。**Breed / Web 首刷**请使用现场可接受的镜像（常为某 profile 的 **`sysupgrade.bin`**，以 Breed 说明为准）；若异常，可用 **`minimal`** 等镜像先确认链路，再在系统内对 **`minimal-baseline`** 做 `sysupgrade`。

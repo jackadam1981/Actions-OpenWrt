@@ -65,26 +65,6 @@ define Device/hiker_x9-standard
 endef
 TARGET_DEVICES += hiker_x9-standard
 
-define Device/hiker_x9-factory
-	$(call Device/hiker_hiker-common)
-	DEVICE_MODEL := Hiker X9 Factory
-	DEVICE_DTS := rt5350_hiker_x9-factory
-	SUPPORTED_DEVICES := hiker,x9-factory hiker,x9 HIKER
-	# Factory helper image: include Breed auto-flash tooling.
-	DEVICE_PACKAGES := \
-		luci-light luci-theme-bootstrap \
-		luci-i18n-base-zh-cn \
-		$(HIKER_X9_STRIP) \
-		hiker-x9-breed-autoflash \
-		hiker-x9-minimal-defaults \
-		urngd \
-		-wpad-basic-mbedtls \
-		-iw -iwinfo
-	IMAGES += factory.bin
-	IMAGE/factory.bin := $$(sysupgrade_bin) | check-size
-endef
-TARGET_DEVICES += hiker_x9-factory
-
 define Device/hiker_x9-p910nd
 	$(call Device/hiker_hiker-common)
 	DEVICE_MODEL := Hiker X9 Print
