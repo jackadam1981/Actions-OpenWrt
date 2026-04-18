@@ -51,9 +51,10 @@ permissions:
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
-  # 必须用带 tag 的 ref（如 v25.12.2），否则 --depth 1 浅克隆下 git describe 常落成 SNAPSHOT r0-<hash>，LuCI 也会跟成 Master。
-  # 小版本更新：改此处并核对 feeds 与 overlay；系列大版本见 https://openwrt.org/releases
-  REPO_BRANCH: v25.12.2
+  # 稳定系列分支：随上游发布自动包含 25.12.3、25.12.4 等（相对固定 tag 更省事）。若要可复现地钉某一版，改为例如 v25.12.3。
+  REPO_BRANCH: openwrt-25.12
+  # 浅克隆 depth 过小会导致 git describe 无 tag → 固件显示 SNAPSHOT / LuCI Master；加大 depth 以纳入近期 v25.12.x 标签历史。
+  OPENWRT_FETCH_DEPTH: 120
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   TARGETS_DIR: targets
@@ -238,11 +239,11 @@ jobs:
         if [ -d openwrt/.git ]; then
           cd openwrt
           git remote set-url origin "$REPO_URL"
-          git fetch --depth 1 origin "$REPO_BRANCH"
+          git fetch --depth "${OPENWRT_FETCH_DEPTH}" origin "$REPO_BRANCH"
           git checkout -B "$REPO_BRANCH" FETCH_HEAD
         else
           rm -rf openwrt
-          git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" openwrt
+          git clone --depth "${OPENWRT_FETCH_DEPTH}" -b "$REPO_BRANCH" "$REPO_URL" openwrt
         fi
         ln -sf "$WORKDIR/openwrt" "$GITHUB_WORKSPACE/openwrt"
 

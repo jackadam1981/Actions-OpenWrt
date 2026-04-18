@@ -31,7 +31,7 @@ jobs:
       - name: Get commit hash (openwrt/openwrt)
         id: getHash
         run: |
-          # 跟踪稳定分支 tip（与 OpenWrt Builder 里固定 tag v25.12.2 可不同步；仅用于发现上游新提交）
+          # 跟踪稳定分支 tip（与 Builder 同源；用于发现上游新提交）
           git clone --depth 1 https://github.com/openwrt/openwrt -b openwrt-25.12 .
           echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
