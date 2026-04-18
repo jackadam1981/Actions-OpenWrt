@@ -50,11 +50,12 @@ define Device/hiker_x9-standard
 	SUPPORTED_DEVICES := hiker,x9-standard hiker,x9 HIKER
 	# Full home-router stack on current OpenWrt feeds (not a 1:1 copy of OEM
 	# opkg_list_installed: kernel/userspace differ from 3.18 OEM; see targets/README.md).
+	# No luci-i18n-base-en: OpenWrt 24.10 feed omits it (English is luci-base default).
 	DEVICE_PACKAGES := \
 		urngd \
 		hiker-x9-standard-defaults \
 		-dnsmasq dnsmasq-full \
-		luci luci-i18n-base-zh-cn luci-i18n-base-en luci-theme-bootstrap \
+		luci luci-i18n-base-zh-cn luci-theme-bootstrap \
 		luci-proto-ipv6 luci-proto-ppp \
 		relayd \
 		-wpad-basic-mbedtls wpad-openssl iw iwinfo \
