@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-  通过 SSH 下发 reboot，本地 ICMP 探测，汇报「重启到再次 ping 通」耗时。
+  通过 SSH 下发 reboot，本地 ICMP 探测，并在 ICMP 恢复后默认继续探测 **TCP 80**，汇报重启到恢复耗时。
 
 .DESCRIPTION
   1) 先确认当前能 ping 通；2) SSH 执行 reboot；3) 等待 InitialGraceSeconds（默认 30s，因设备未必立刻重启）；4) 再开始 ICMP 判定连通。
   汇报：SSH 下发到首次 ping 通总时长；宽限期后至 ping 通时长；若宽限后曾观测掉线再恢复，则汇报掉线→恢复。
-  可选 -ProbeTcpPortAfterPing 80：ICMP 恢复后再测 TCP（Web 常晚于 ping）。
+  **默认**在 ICMP 恢复后继续探测 **TCP 80**（Web 常晚于 ping）；无 Web 或无 80 监听时请加 **-ProbeTcpPortAfterPing 0** 仅测 ICMP。
 
   **能 SSH 时**比单纯 `ping-until-up` 更适合测「重启到恢复」：本脚本会发 `reboot`、给宽限期、再要求**先观测掉线再 ping 通**，避免「设备其实没重启 / 宽限内一直通」的误判。
 
@@ -36,7 +36,7 @@
   SSH 发出 reboot 后，先等待再开始 ICMP 判定（默认 30；发令后设备常延迟才真正重启）。
 
 .PARAMETER ProbeTcpPortAfterPing
-  大于 0 时，在 ICMP 恢复后再探测该 TCP 端口（常用 80）。0 不测。
+  ICMP 恢复后再探测的 TCP 端口；**默认 80**。设为 **0** 则只测 ping、不测 TCP。
 
 .PARAMETER MaxWaitTcpSeconds
   ICMP 恢复后等待 TCP 打开的最长时间（秒，0 不限制）。
@@ -51,7 +51,10 @@
   .\scripts\measure-reboot-recovery.ps1 -Target 192.168.1.1 -SshKey "$env:USERPROFILE\.ssh\hiker_x9_cursor"
 
 .EXAMPLE
-  .\scripts\measure-reboot-recovery.ps1 -Target 192.168.168.1 -SshKey "$env:USERPROFILE\.ssh\hiker_x9_cursor" -LegacySshRsaHostKey -ProbeTcpPortAfterPing 80
+  .\scripts\measure-reboot-recovery.ps1 -Target 192.168.168.1 -SshKey "$env:USERPROFILE\.ssh\hiker_x9_cursor" -LegacySshRsaHostKey
+
+.EXAMPLE
+  .\scripts\measure-reboot-recovery.ps1 -Target 192.168.1.1 -SshKey "$env:USERPROFILE\.ssh\hiker_x9_cursor" -ProbeTcpPortAfterPing 0
 #>
 param(
     [string] $Target = "192.168.1.1",
@@ -62,7 +65,7 @@ param(
     [int] $MaxWaitSeconds = 600,
     [int] $MinDownProbes = 2,
     [int] $InitialGraceSeconds = 30,
-    [int] $ProbeTcpPortAfterPing = 0,
+    [int] $ProbeTcpPortAfterPing = 80,
     [int] $MaxWaitTcpSeconds = 600,
     [int] $TcpConnectTimeoutMs = 2000,
     [switch] $LegacySshRsaHostKey
