@@ -51,8 +51,9 @@ permissions:
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
-  # 稳定发行分支（非 master SNAPSHOT）。升级系列时改为例如未来 openwrt-26.xx 并核对 overlay 兼容性。
-  REPO_BRANCH: openwrt-25.12
+  # 必须用带 tag 的 ref（如 v25.12.2），否则 --depth 1 浅克隆下 git describe 常落成 SNAPSHOT r0-<hash>，LuCI 也会跟成 Master。
+  # 小版本更新：改此处并核对 feeds 与 overlay；系列大版本见 https://openwrt.org/releases
+  REPO_BRANCH: v25.12.2
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   TARGETS_DIR: targets
