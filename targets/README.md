@@ -138,15 +138,16 @@
 
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
 
-**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 `[scripts/ping-until-up.ps1](../scripts/ping-until-up.ps1)`，Linux / macOS 用 `[scripts/ping-until-up.sh](../scripts/ping-until-up.sh)`（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。`**.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错；探测使用 **.NET ICMP**（与 `ping` 一致），**不用** `Test-Connection -TimeoutSeconds`（PS 5.1 无该参数，会恒失败）。系统内刷写并计全程见 `[scripts/measure-sysupgrade-recovery.ps1](../scripts/measure-sysupgrade-recovery.ps1)`（PuTTY 0.78+ 需 `-PlinkHostKey` 与 `-pwfile` 空密码）。**ping 通后 Web 仍可能未就绪**时，可加 `**-ProbeTcpPortAfterPing 80`**，在 ICMP 恢复后继续探测 **TCP 80** 并打出 **ICMP→TCP** 间隔与 **SCP→TCP** 总时长；`[measure-reboot-recovery.ps1](../scripts/measure-reboot-recovery.ps1)` 同样支持该参数。
+**刷机后测「多久能 ping 通」**：Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机后 PC 接 LAN，默认探测 `192.168.1.1`）。**`.ps1` 可加 `-ProbeTcpPort 80`**，首 ICMP 通后**同一时钟**继续等到 **TCP 80**（**U-Boot 刷 X9 baseline** 等无 SSH 场景见 [`targets/_hiker-x9-baseline-only/README.md`](_hiker-x9-baseline-only/README.md)）。**`.ps1` 运行时提示为英文**；探测用 **.NET ICMP**，不用 `Test-Connection -TimeoutSeconds`（PS 5.1 会恒失败）。**已在系统内** SCP + `sysupgrade` 全程计时用 [`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1)（可加 `-ProbeTcpPortAfterPing 80`、PuTTY 需 `-PlinkHostKey`）；[`measure-reboot-recovery.ps1`](../scripts/measure-reboot-recovery.ps1) 同样支持 `-ProbeTcpPortAfterPing`。
 
-**实测记录（供预期）**：下列时间为 **秒（s）**；**SCP→ICMP**、**SCP→TCP80** 指自本机 **SCP 开始** 到脚本判定恢复；**掉线→通** / **宽限→ICMP** 见 `[measure-sysupgrade-recovery.ps1](../scripts/measure-sysupgrade-recovery.ps1)` 报告（宽限默认 30s，宽限后须 **先 ICMP 掉线再通**）。**「—」** 表示当次未测或未记录。`**-PlinkHostKey`** 在 `**-n**` 刷机后常会变；**跨 ar71xx/ath79** 等设备校验不通过时脚本侧可能加 `**-ForceImage`**（设备端 `sysupgrade -F`）。同机多次刷写负载不同，**仅作粗预期**。
+**实测记录（供预期）**：下列时间为 **秒（s）**；**SCP→ICMP**、**SCP→TCP80** 指自本机 **SCP 开始** 到脚本判定恢复；**掉线→通** / **宽限→ICMP** 见 [`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1)（宽限默认 30s，宽限后须 **先 ICMP 掉线再通**）。**「—」** 表示当次未测。**`-PlinkHostKey`** 在 `-n` 刷机后常会变；跨分支可能加 **`-ForceImage`**。同机多次刷写负载不同，**仅作粗预期**。
 
-
-| 设备             | 场景 / 镜像                                   | 条件摘要                                | SCP→ICMP  | 掉线→通 | 宽限→ICMP | 首次掉线 (SCP 后) | ICMP→TCP80 | SCP→TCP80 | 备注                               |
-| -------------- | ----------------------------------------- | ----------------------------------- | --------- | ---- | ------- | ------------ | ---------- | --------- | -------------------------------- |
-| D-Link DIR-505 | U-Boot / 恢复页，**19.07.8 官方 factory**       | 非本脚本；PC 计时首 ICMP                    | **86.6**  | —    | —       | —            | —          | —         | 约 **90s 内**粗预期；与 sysupgrade 路径不同 |
-| D-Link DIR-505 | **25.12.0 ath79** `…ath79…sysupgrade.bin` | 自 ar71xx 升 ath79、`**-F`**、TCP80     | **110.1** | 18.0 | 68.5    | 92.1         | **76.7**   | **186.7** | ping 通后 **Web 仍晚约 77s**          |
-| D-Link DIR-505 | **19.07.8** ar71xx sysupgrade             | 自 **25.12 ath79** 刷回、`**-F`**、TCP80 | **76.9**  | 12.0 | 40.1    | 64.9         | **44.1**   | **121.0** | ping 通后 **Web 仍晚约 44s**          |
-
+| 设备 | 场景 / 镜像 | 条件摘要 | SCP→ICMP | 掉线→通 | 宽限→ICMP | 首次掉线 (SCP 后) | ICMP→TCP80 | SCP→TCP80 | 备注 |
+|------|-------------|----------|----------|---------|-----------|------------------|------------|-----------|------|
+| D-Link DIR-505 | U-Boot / 恢复页 **19.07.8 factory** | 非脚本；PC 计首 ICMP | **86.6** | — | — | — | — | — | 约 90s 内粗预期 |
+| D-Link DIR-505 | **19.07.8** ar71xx sysupgrade | `-NoKeepConfig`、Plink | **103.7** | 42.0 | 65.3 | 61.7 | — | — | 未测 TCP80 |
+| D-Link DIR-505 | **19.07.8** ar71xx + TCP80 | 同上 | **133.6** | 72.0 | 94.9 | 61.6 | **0.1** | **133.7** | Web 与 ICMP 几乎同时 |
+| D-Link DIR-505 | **25.12.0 ath79** sysupgrade | 自 ar71xx 升、`sysupgrade -F`、TCP80 | **110.1** | 18.0 | 68.5 | 92.1 | **76.7** | **186.7** | ping 后 Web 仍晚约 77s |
+| D-Link DIR-505 | **19.07.8** ar71xx 刷回 | 自 25.12 ath79、`sysupgrade -F`、TCP80 | **76.9** | 12.0 | 40.1 | 64.9 | **44.1** | **121.0** | ping 后 Web 晚约 44s |
+| Hiker X9 | **hiker_x9-minimal** | `ping-until-up` 类 LAN 首 ICMP | **680** | — | — | — | — | — | 非 sysupgrade；负载影响大 |
 

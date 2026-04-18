@@ -14,6 +14,24 @@
 
 若仍对 **`192.168.100.1`** 测 baseline，会一直不通，**不是**没启动。
 
+## U-Boot / Web 刷 **baseline** 后怎么测「多久起来」（无 SSH）
+
+`measure-sysupgrade-recovery.ps1` 依赖 **SCP + SSH**，**U-Boot 直刷**后通常还 **没有密钥/空密码策略也不便自动化**，因此用 **`ping-until-up`** 在本机计时即可（与 DIR-505 刷 factory 后同一类流程）。
+
+1. **PC 网线接 X9 LAN**，本机网卡设静态或接上游 DHCP（按你现场）。
+2. 选定 **T0**：例如 **U-Boot/Web 提示写入完成并复位** 的瞬间，或你 **手动断电再上电** 的时刻（**全程只用一个 T0**，不要混用）。
+3. **在 T0 同时**开终端执行（baseline LAN 多为 **`192.168.1.1`**）：
+
+   ```powershell
+   .\scripts\ping-until-up.ps1 -Target 192.168.1.1 -ProbeTcpPort 80
+   ```
+
+   会先打印 **首 ICMP 通** 的秒数；若加了 **`-ProbeTcpPort 80`**，同一计时下再打印 **TCP 80 可连**（LuCI/uHTTPd 常晚于 ping）。
+
+4. 可选 **`-MaxWaitSeconds 900`** 避免无限等；Linux/macOS 用 **`ping-until-up.sh`**，带 TCP 时需 **`nc`**：`./scripts/ping-until-up.sh 192.168.1.1 1 0 80`。
+
+CI **只能手动 dispatch** 时：先下 Artifact 拿 **`…hiker_x9-minimal-baseline…sysupgrade.bin`**（或你们 U-Boot 实际接受的镜像名），按 Breed/Web 流程刷入，再在 PC 上跑上述脚本即可。
+
 ## Breed 里刷 `*-squashfs-sysupgrade.bin`（无串口）
 
 本仓对 **官版 / 原厂首刷** 更推荐 **`hiker_x9-factory` → `factory.bin`**；其它 profile 的 **`sysupgrade.bin`** 多在 **已运行 OpenWrt** 下升级用。Breed 直刷 sysupgrade 若异常，可先 factory/minimal 确认链路，再在系统内做 baseline 的 sysupgrade。
