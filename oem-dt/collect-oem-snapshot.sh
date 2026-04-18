@@ -38,6 +38,18 @@ uname -a >"$OUT/uname.txt" 2>&1
 
 cat /proc/mtd >"$OUT/proc_mtd.txt" 2>&1 || echo "(missing)" >"$OUT/proc_mtd.txt"
 
+# opkg 官方/自定义源（与 Chaos Calmer 等发行版、包索引 URL 对应）
+if [ -r /etc/opkg/distfeeds.conf ]; then
+	cp /etc/opkg/distfeeds.conf "$OUT/opkg_distfeeds.conf"
+else
+	echo "(missing /etc/opkg/distfeeds.conf)" >"$OUT/opkg_distfeeds.conf"
+fi
+if [ -r /etc/opkg/customfeeds.conf ]; then
+	cp /etc/opkg/customfeeds.conf "$OUT/opkg_customfeeds.conf"
+else
+	echo "(missing /etc/opkg/customfeeds.conf)" >"$OUT/opkg_customfeeds.conf"
+fi
+
 # 常见 board/model 路径
 for f in /tmp/sysinfo/board_name /tmp/sysinfo/model; do
 	if [ -r "$f" ]; then

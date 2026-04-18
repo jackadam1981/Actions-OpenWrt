@@ -2,7 +2,7 @@
 
 - **采集时间（PC 侧）**：2026-04-18（以 git 提交为准）。
 - **来源**：`ssh` 至 `root@192.168.168.1`，固定目录 `/tmp/oem-snap-collect`，打包为 `oem-snap-collect.tgz`。
-- **发行版摘要**：`openwrt_release` 为 **Chaos Calmer 15.05**（`ramips/rt305x`）；内核见同目录 `uname.txt`（**3.18.140 #11**）。
+- **发行版摘要**：`system_release.txt` / `usr_lib_os_release.txt` 已写明 **Chaos Calmer 15.05**、`ramips/rt305x`。**`opkg_distfeeds.conf`** 中各 `src/gz` 均指向 `https://archive.openwrt.org/chaos_calmer/15.05/ramips/rt305x/packages/...`，与上述字段 **一致**，属于对 **15.05 / rt305x 包索引** 的交叉印证（**不是**仅靠猜测；**内核与 rootfs 仍可能含 OEM 补丁/私有包**，与「上游 15.05 树 100% 一致」不是同一命题）。
 - **已装包数量**：`opkg_count.txt` → **182**（见 `opkg_list_installed.txt`）。
 - **内核（本次扩展）**：`proc_version.txt`（**gcc 4.8.3**、**oem@oem-D3543-A1** 等编译环境串）、`proc_cmdline.txt`、`proc_cpuinfo.txt`、`dmesg_head.txt`；**`/lib/modules/` 下 `.ko` 共 162 个**（`kernel_modules_ko_count.txt`）；**`kernel`/`kmod-*` opkg 条目 84 行**（`opkg_kernel_kmod.txt`）。**无 `/proc/config.gz`**，无法在运行中导出完整 `.config`（见 `kernel_config.txt` 说明）。
 - **`/etc/os-release`**：该固件上为存根（内容为一行路径）；完整字段见 **`usr_lib_os_release.txt`**（自 `/usr/lib/os-release` 补采）。

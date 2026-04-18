@@ -37,6 +37,8 @@ $body | ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa r
 | `dt_model.txt` | `/proc/device-tree/model`（若可读） |
 | `opkg_list_installed.txt` | `opkg list-installed` 排序后完整列表 |
 | `opkg_count.txt` | 上述列表行数（即包数量） |
+| `opkg_distfeeds.conf` | **`/etc/opkg/distfeeds.conf`**（官方包源 URL，可与 `openwrt_release` 交叉核对） |
+| `opkg_customfeeds.conf` | **`/etc/opkg/customfeeds.conf`**（若有） |
 | `opkg_kernel_kmod.txt` | 从已装列表筛 **`kernel` / `kmod-*`**（内核镜像包与内核模块包） |
 | `opkg_kernel_kmod_count.txt` | 上述行数 |
 | `proc_version.txt` | `/proc/version`（编译器、#define 版本串等） |
