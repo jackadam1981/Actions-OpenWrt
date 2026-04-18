@@ -5,7 +5,7 @@
 .DESCRIPTION
   Use after flash/reboot to see how long until the device answers ping. Default probe every 1s.
   Uses .NET ICMP (same family as ping.exe), not Test-Connection — Windows PS 5.1 lacks -TimeoutSeconds on Test-Connection and would always fail.
-  Hiker minimal 固件 LAN 常为 192.168.100.1；baseline（`hiker_x9-minimal-baseline`）无 hiker defaults，LAN 多为 192.168.1.1，通常有 DHCP。
+  `hiker_x9-minimal` / `minimal-baseline` 的 LAN 多为 192.168.1.1（上游默认）；`minimal` 无 dnsmasq 时本机可设静态 IP 再 ping。历史 `hiker-x9-minimal-defaults` 曾为 192.168.100.1。
   U-Boot / Web 刷机后无 SSH 时，用本脚本从 PC 计时首 ICMP；可选 `-ProbeTcpPort 80` 在 ping 通后再计到 Web 端口打开。
 
 .PARAMETER Target

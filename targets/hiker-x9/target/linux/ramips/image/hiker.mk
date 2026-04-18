@@ -18,13 +18,12 @@ define Device/hiker_x9-minimal
 	DEVICE_MODEL := Hiker X9 Minimal
 	DEVICE_DTS := rt5350_hiker_x9-minimal
 	SUPPORTED_DEVICES := hiker,x9-minimal hiker,x9 HIKER
-	# Golden base image: wired LAN only + LuCI (zh). Strip WiFi/AP userspace from
-	# target defaults (same -wpad-basic-mbedtls pattern as WiFi profiles).
+	# Smallest wired image: no LuCI; stock /etc/config LAN (typically 192.168.1.1).
+	# hiker-x9-minimal-ping-defaults: only WAN proto=none if wan exists (udhcpc stall).
+	# Same strip as before: no ppp/dnsmasq per HIKER_X9_STRIP; no WiFi userspace.
 	DEVICE_PACKAGES := \
-		luci-light luci-theme-bootstrap \
-		luci-i18n-base-zh-cn \
 		$(HIKER_X9_STRIP) \
-		hiker-x9-minimal-defaults \
+		hiker-x9-minimal-ping-defaults \
 		urngd \
 		-wpad-basic-mbedtls \
 		-iw -iwinfo

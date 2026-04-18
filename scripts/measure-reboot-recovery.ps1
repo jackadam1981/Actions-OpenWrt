@@ -12,7 +12,7 @@
   老设备（Dropbear 只提供 **RSA 主机密钥**）若 OpenSSH 报 `no matching host key type … ssh-rsa`，请加 **-LegacySshRsaHostKey**。
 
 .PARAMETER Target
-  设备 LAN IP（baseline 多为 192.168.1.1；minimal 多为 192.168.100.1）。
+  设备 LAN IP（`hiker_x9-minimal` / baseline 多为 192.168.1.1；历史 `hiker-x9-minimal-defaults` 曾为 192.168.100.1）。
 
 .PARAMETER SshKey
   SSH 私钥路径。

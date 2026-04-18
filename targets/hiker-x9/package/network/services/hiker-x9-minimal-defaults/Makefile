@@ -19,8 +19,9 @@ define Package/hiker-x9-minimal-defaults
 endef
 
 define Package/hiker-x9-minimal-defaults/description
- Banner, first-boot network, firewall and LED for the minimal (wired)
- print-server base image. Reset button: package hiker-x9-reset-button.
+ Historical bundle: LuCI banner, LAN 192.168.100.1, WAN=none, LED, boot metrics.
+ Not installed by hiker_x9-minimal profile anymore (see hiker-x9-minimal-ping-defaults).
+ Reset button: package hiker-x9-reset-button.
 endef
 
 define Build/Prepare

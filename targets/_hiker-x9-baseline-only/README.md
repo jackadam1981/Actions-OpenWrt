@@ -8,11 +8,11 @@
 
 | 项目 | `hiker_x9-minimal` | `hiker_x9-minimal-baseline`（上游小路由默认 + `urngd`） |
 |------|--------------------|--------------------------------------|
-| LAN 地址 | **`192.168.100.1`**（defaults 写入） | 多为 **`192.168.1.1`**（上游默认） |
-| DHCP | 无（profile 曾 strip `dnsmasq`） | **通常有**（保留上游默认 dnsmasq 等） |
-| `ping-until-up` | 常用 `-Target 192.168.100.1` | 默认 **`192.168.1.1`** 即可；或接 LAN 等 DHCP 后再 ping 网关 |
+| LAN 地址 | 多为 **`192.168.1.1`**（上游默认；**不**再写 `192.168.100.1`） | 多为 **`192.168.1.1`**（上游默认） |
+| DHCP | 无（`HIKER_X9_STRIP` 去掉 `dnsmasq`） | **通常有**（保留上游默认 dnsmasq 等） |
+| `ping-until-up` | **`-Target 192.168.1.1`**（或你改过的 LAN） | 默认 **`192.168.1.1`** 即可；或接 LAN 等 DHCP 后再 ping 网关 |
 
-若仍对 **`192.168.100.1`** 测 baseline，会一直不通，**不是**没启动。
+若要对 **`192.168.100.1`** 测 **`minimal-baseline`**，会一直不通，**不是**没启动。需要 **`192.168.100.1`** 请自行装 **`hiker-x9-minimal-defaults`** 或换用带该 defaults 的 fork profile。
 
 ## U-Boot / Web 刷 **baseline** 后怎么测「多久起来」（无 SSH）
 

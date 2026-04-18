@@ -1,0 +1,9 @@
+#!/bin/sh
+# hiker_x9-minimal (ping-only): keep stock LAN; only avoid WAN DHCP stall.
+
+if uci -q show network.wan >/dev/null 2>&1; then
+	uci set network.wan.proto='none'
+	uci commit network
+fi
+
+exit 0

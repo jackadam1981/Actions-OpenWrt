@@ -33,7 +33,7 @@
 - **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、`**CONFIG_TARGET_MULTI_PROFILE=y`**、`**CONFIG_TARGET_PER_DEVICE_ROOTFS=y`**，以及多个 `**CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y**`（注意是 `**TARGET_DEVICE_…**` 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
   - **`hiker_x9-minimal-baseline`**（[`targets/_hiker-x9-baseline-only/.config`](_hiker-x9-baseline-only/.config)、workflow **`baseline_only`**）：与 **`minimal`** **同 DTS**；**包 = 上游小路由默认 + `urngd`**；**不装** `hiker-x9-minimal-defaults`。LAN 多为 **`192.168.1.1`**、常有 DHCP；**勿用** `192.168.100.1` 测。详见 [`targets/_hiker-x9-baseline-only/README.md`](_hiker-x9-baseline-only/README.md)。
   - **`hiker_x9-standard`（标准版）**：与 **`minimal`** **同 DTS**；**不**使用 `HIKER_X9_STRIP`（保留上游默认的 **`dnsmasq`** / `firewall` / `ppp` 等路由器栈，**不**编入 **`dnsmasq-full`** 以通过 **`IMAGE_SIZE:=7872k`** 的 **`check-size`**）；另装 **`luci`**（完整 LuCI 元包）、**`wpad-mbedtls`**（非 `wpad-openssl`）+ **`iw` / `iwinfo`**、常用 **USB 存储与 USB 网卡 kmod**（**无** **`relayd` / `usbutils`**），意图在 **OpenWrt 稳定版（CI 默认 `openwrt-25.12`）对应 feed** 上**贴近** [`oem-dt/collected-192.168.168.1/`](oem-dt/collected-192.168.168.1/) 里 OEM **`opkg_list_installed` 的角色**（**不是**把 182 条包名逐条搬进 `DEVICE_PACKAGES`：内核与包版本与 OEM 3.18 树不对齐；`panel-ap-setup`、`luci-theme-Rosy` 等也不在官方 feed）。**当前为排查首启极慢，`DEVICE_PACKAGES` 故意不含 `hiker-x9-standard-defaults`**，LAN/WAN **随上游默认**（多为 **`192.168.1.1`** 等），**不是** `192.168.100.1`；待原因明确后再把 **`hiker-x9-standard-defaults`** 写回 `hiker.mk`。若仍超容，再在 `hiker.mk` 收窄（例如去掉 **`luci-proto-ppp`** 或部分 **USB kmod**）；需要 **`dnsmasq-full` / `wpad-openssl` / `relayd` / `usbutils`** 时可 **`opkg install`** 自行补装。
-  - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`。**实测参考**：刷写后 LAN 侧用 `ping-until-up` 计时至首次 **ping 通** 约 **680 s**（约 11 min，随环境与存储略有出入）；**LAN 为 `192.168.100.1`**（由 `hiker-x9-minimal-defaults` 写入））
+  - `hiker_x9-minimal`（**最小有线镜像**：**无 LuCI**；**不改**上游默认 **LAN**（多为 **`192.168.1.1`**）；`hiker-x9-minimal-ping-defaults` 仅首启把 **`network.wan.proto`** 置 **`none`**（免未插上行线时 **`udhcpc`** 拖慢）；**`$(HIKER_X9_STRIP)`** 去掉 **`ppp` / `dnsmasq` / `odhcpd`** 等；**无** WiFi 用户态（**`-wpad-basic-mbedtls` `-iw` `-iwinfo`**）+ **`urngd`**。以 **LAN ping 通** 为验收即可。若仍要 **LuCI + 192.168.100.1** 旧行为，见源码包 **`hiker-x9-minimal-defaults`**（已不再编入本 profile）。）
   - ~~`hiker_x9-factory`~~ **已移除**：曾提供 **`factory.bin` + Breed 首启辅助**；实机 **`oem-dt` 采集**对应的是**较老 OpenWrt 衍生环境**，**并非**「真正出厂首版」固件，该 profile **仅具历史参考意义**，继续维护收益有限。**官版 / 首刷 / 救砖**请按现场 **Breed、Web 恢复、TFTP、UART** 等选用可接受的镜像或工具；已在 OpenWrt 上运行时仍用各 profile 的 **`sysupgrade.bin`**。
   - `hiker_x9-p910nd`
   - `hiker_x9-p910nd-wifi`
@@ -42,7 +42,7 @@
   - `hiker_x9-virtualhere-wifi`
   - `hiker_x9-both`（**p910nd + VirtualHere**，有线；与 `minimal` 相同 WiFi 用户态剔除策略）
   - `hiker_x9-both-wifi`（同上 + **AP WiFi 栈**）
-- `**package/network/services/`** 下与上述功能 profile 对应的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`**hiker-x9-standard-defaults**`（**`standard` profile 当前未编入**，见 `hiker.mk`）、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`；另有共用的 `**virtualhere-usb-server`** 与 `**hiker-x9-reset-button**`（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
+- `**package/network/services/`** 下与上述功能 profile 对应的 defaults 目录（各含 `Makefile` + `files/`）：`**hiker-x9-minimal-ping-defaults**`（**`minimal` profile**）、`hiker-x9-minimal-defaults`（**历史** LuCI+`192.168.100.1` 模板，**当前不由 `minimal` 编入**）、`**hiker-x9-standard-defaults**`（**`standard` profile 当前未编入**，见 `hiker.mk`）、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`；另有共用的 `**virtualhere-usb-server`** 与 `**hiker-x9-reset-button**`（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
 - **OpenWrt / 内核口径（含 `hiker_x9-standard` 与其它 X9 profile）**：默认 CI 见 [`.github/workflows/openwrt-builder.yml`](../.github/workflows/openwrt-builder.yml)：**`REPO_BRANCH=openwrt-25.12`**、源码 **`https://github.com/openwrt/openwrt`**，即官方 **25.12 稳定系列**（截至上游说明当前稳定线为 **25.12**，如 **v25.12.2**；刷机后 `/etc/openwrt_release` 一般为 **`25.12.x`**，**不是** **SNAPSHOT** / **master**），**不是** OEM 的 **Chaos Calmer 15.05**。内核与上游 **`target/linux/ramips`** 一致；该分支上 [`Makefile`](https://github.com/openwrt/openwrt/blob/openwrt-25.12/target/linux/ramips/Makefile) 当前为 **`KERNEL_PATCHVER:=6.12`**（**精确 `6.12.x`** 以你那次编译的 tag/commit 为准）。若要换 **后续新稳定系列**（如未来 **26.xx**），改 workflow 里 **`REPO_BRANCH`** 并在本地试编确认 overlay 无 API 差异即可。
 - **仅编 X9 标准版（省 self-hosted 时间）**：手动 **OpenWrt Builder** 时 **`only_targets`** 填 **`hiker-x9`**，**`hiker_x9_profile`** 选 **`standard-only`**（使用 `targets/hiker-x9/.config.standard-only`，只勾选 `hiker_x9-standard`）；Runner 选 **self-hosted** 即可在自建机上只编标准版镜像。
@@ -50,8 +50,8 @@
 ### 首启很慢、SSH 很久才通（常见原因）
 
 1. **Dropbear 首次生成 host key**（`/etc/dropbear/dropbear_*_host_key`）：在 RT5350 上若熵不足，`dropbearkey` 可能极慢。`hiker_x9-minimal` 等已加入 `**urngd`** 的 profile 可加快随机数（仍建议首次上电多等一会儿）。
-2. **WAN 默认 `dhcp`、网线未插**：`udhcpc` 会长时间重试，拖慢 `netifd` 与后续服务。`99-hiker-x9-minimal` 在首启把 `**network.wan.proto` 置为 `none`**（纯 LAN 场景）；若你确实要用 WAN 拨号/上联，刷机后在 `/etc/config/network` 里改回 `dhcp`/`pppoe` 等。
-3. **自行对照日志**：SSH 能登录后执行 `**logread -e hiker-mini -e dropbear -e netifd`** 看 `uci-defaults` 与网络、SSH 启动的相对时间；`**dmesg | tail`** 看内核阶段是否异常慢。
+2. **WAN 默认 `dhcp`、网线未插**：`udhcpc` 会长时间重试，拖慢 `netifd` 与后续服务。`hiker_x9-minimal` 的 **`99-hiker-x9-minimal-ping`** 在首启把 **`network.wan.proto` 置为 `none`**（纯 LAN / ping 验收）；若你确实要用 WAN 拨号/上联，刷机后在 `/etc/config/network` 里改回 `dhcp`/`pppoe` 等。
+3. **自行对照日志**：SSH 能登录后执行 `**logread -e dropbear -e netifd`** 看网络与 SSH 启动的相对时间；`**dmesg | tail`** 看内核阶段是否异常慢。
 
 ### hiker-x9：`DEVICE_PACKAGES` 一览（对照 `hiker.mk`）
 
@@ -63,9 +63,9 @@
 
 | 包名                                                         | minimal | p910nd | p910nd-wifi | virtualhere | virtualhere-wifi | both | both-wifi |
 | ---------------------------------------------------------- | ------- | ------ | ----------- | ----------- | ---------------- | ---- | --------- |
-| `luci-light`                                               | +       | +      | +           | +           | +                | +    | +         |
-| `luci-theme-bootstrap`                                     | +       | +      | +           | +           | +                | +    | +         |
-| `luci-i18n-base-zh-cn`                                     | +       | +      | +           | +           | +                | +    | +         |
+| `luci-light`                                               |         | +      | +           | +           | +                | +    | +         |
+| `luci-theme-bootstrap`                                     |         | +      | +           | +           | +                | +    | +         |
+| `luci-i18n-base-zh-cn`                                     |         | +      | +           | +           | +                | +    | +         |
 | `p910nd`                                                   |         | +      | +           |             |                  | +    | +         |
 | `luci-app-p910nd`                                          |         | +      | +           |             |                  | +    | +         |
 | `luci-i18n-p910nd-zh-cn`                                   |         | +      | +           |             |                  | +    | +         |
@@ -80,7 +80,7 @@
 | `iw`                                                       |         |        | +           |             | +                |      | +         |
 | `iwinfo`                                                   |         |        | +           |             | +                |      | +         |
 | `virtualhere-usb-server`                                   |         |        |             | +           | +                | +    | +         |
-| `hiker-x9-minimal-defaults`                                | +       |        |             |             |                  |      |           |
+| `hiker-x9-minimal-ping-defaults`                           | +       |        |             |             |                  |      |           |
 | `hiker-x9-p910nd-defaults`                                 |         | +      |             |             |                  |      |           |
 | `hiker-x9-p910nd-wifi-defaults`                            |         |        | +           |             |                  |      |           |
 | `hiker-x9-virtualhere-defaults`                            |         |        |             | +           |                  |      |           |
@@ -103,7 +103,7 @@
 
 - `**p910nd-wifi` / `virtualhere-wifi` / `both-wifi**`：`−wpad-basic-mbedtls` 与 `**+wpad-mbedtls**` 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
 - **每个功能 profile 通常对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile 维护；**例外**：**`hiker_x9-standard`** 当前**未**拉 **`hiker-x9-standard-defaults`**（见上）。**复位键脚本** 集中在 `**hiker-x9-reset-button`**；`**both*`** 仍不复用 `**virtualhere-*-defaults**`。
-- `**minimal**`：保留 LuCI 与中文，`**+hiker-x9-minimal-defaults**`，且 `**−wpad-basic-mbedtls**`、`**−iw` / `−iwinfo**`；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
+- `**minimal**`：**无 LuCI**；`**+hiker-x9-minimal-ping-defaults**` + **`urngd`** + **`$(HIKER_X9_STRIP)`**（见 `hiker.mk`）；`**−wpad-basic-mbedtls**`、`**−iw` / `−iwinfo**`；LAN **随上游默认**（多为 **`192.168.1.1`**）。内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
 - `**p910nd`（无 WiFi）**：未写 `**−wpad-*`**，即 **沿用该 target 默认的 wpad 组合**（若与后续精简策略冲突，可再单独加 `−` 行对齐 `minimal`）。
 
 **参考仓库** [jackadam1981/openwrt-custom-devices](https://github.com/jackadam1981/openwrt-custom-devices) 仍可查阅历史设备思路；**CI 已不再通过 feed 引入**。增硬件与机型请只在 `targets/<name>/` 下维护 overlay（`target/`、`package/`、`etc/`），由 `diy-part2.sh` 合并进 OpenWrt 源码树。

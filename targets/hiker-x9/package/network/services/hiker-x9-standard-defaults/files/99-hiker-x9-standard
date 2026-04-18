@@ -15,7 +15,7 @@ fi
 
 [ -x /etc/init.d/hiker-boot-metrics ] && /etc/init.d/hiker-boot-metrics enable 2>/dev/null
 
-# 与 minimal 相同 LAN：192.168.100.1
+# 产品 LAN：192.168.100.1（与历史 hiker-x9-minimal-defaults 对齐；当前 minimal profile 已用上游默认 LAN）
 if uci -q show network.lan >/dev/null 2>&1; then
 	uci set network.lan.proto='static'
 	uci set network.lan.ipaddr='192.168.100.1'
