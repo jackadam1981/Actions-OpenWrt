@@ -85,6 +85,17 @@ ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa \
   root@192.168.168.1 "OEM_SNAPSHOT_DIR=/root/oem-snap sh -s" < oem-dt/collect-oem-snapshot.sh
 ```
 
+## 在 OEM 上 `wget` / `opkg` 访问 `archive.openwrt.org`（HTTPS）
+
+旧版 **Chaos Calmer / BusyBox `wget`** 上常见两类现象（你贴的输出即为其一）：
+
+1. **`Connecting to …|2001:…|:443... failed: Permission denied`**：先走了 **IPv6**，本机未放行或上游不可达；`wget` 一般会再试 **IPv4** 并成功连接（可忽略，或在能改 `network`/`sysctl` 时禁用 IPv6 以省一次失败）。
+2. **`cannot verify archive.openwrt.org's certificate`（Let's Encrypt R13 等）**：设备内 **CA 根证书过旧**，不信任当前服务器证书链。**临时**拉索引或包可用：
+   `wget --no-check-certificate 'https://archive.openwrt.org/.../Packages.gz'`
+   （等价思路：`curl -k`）。**长期**更稳妥的是在仍可信来源上更新 **`ca-bundle`** / `ca-certificates`（若该 15.05 feed 里仍有对应 ipk），或在 **PC 下载后 `scp` 到路由** 再 `opkg install *.ipk` / 本地 `file://`。**`opkg update`** 若走 HTTPS，也会受同一证书问题影响。
+
+这与 `distfeeds.conf` 里 URL **本身是否有效**无关，而是 **本机 TLS 信任根**与 **IPv6 策略** 问题。
+
 ## 设备树等（历史说明）
 
 - `live.dts`、`dt_export/`、`dt_export.tgz`：来自当时现场的 DT 导出。
