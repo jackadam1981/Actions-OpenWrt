@@ -7,15 +7,27 @@
 **当前 OEM / 现场 LAN 为 `192.168.168.1` 时**，在 PC 上（仓库根或本目录）执行：
 
 ```sh
-ssh root@192.168.168.1 'sh -s' < oem-dt/collect-oem-snapshot.sh
+ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+  root@192.168.168.1 'sh -s' < oem-dt/collect-oem-snapshot.sh
 ```
 
 （本仓 X9 **baseline** 等镜像 LAN 多为 `192.168.1.1`；以你设备实际管理地址为准，把下面命令里的 IP 换掉即可。）
 
 ### Windows / 新版 OpenSSH 注意
 
-- 若提示 **no matching host key type … ssh-rsa**：Dropbear 老设备只提供 RSA 主机密钥，需加：
+- 若提示 **no matching host key type … ssh-rsa**（裸跑 `ssh root@192.168.168.1` 也会如此）：Dropbear 老设备只提供 RSA 主机密钥，**所有 `ssh`/`scp` 都要**加：
   `-o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa`
+  **交互式登录**示例：`ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa root@192.168.168.1`。也可在 **`~/.ssh/config`** 里对该 `Host` 单独写上述两项，避免每次手打，例如：
+
+```sshconfig
+Host hiker-oem-168
+    HostName 192.168.168.1
+    User root
+    HostkeyAlgorithms +ssh-rsa
+    PubkeyAcceptedAlgorithms +ssh-rsa
+```
+
+之后执行：`ssh hiker-oem-168`。
 - **`scp` 报 `sftp-server: not found`**：路由上无 SFTP 子系统时，请使用 **`scp -O`**（走传统 scp 协议）。
 - **PowerShell 用管道喂 `sh -s`**：若脚本是 CRLF，可能报 `set: illegal option`，请先把脚本转为 **LF** 再传，例如在仓库根目录：
 
@@ -56,8 +68,10 @@ $body | ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa r
 在路由器上打包并拷回：
 
 ```sh
-ssh root@192.168.168.1 'cd /tmp && tar czf oem-snapshot.tgz oem-snapshot-* && ls -la oem-snapshot.tgz'
-scp -O root@192.168.168.1:/tmp/oem-snapshot.tgz .
+ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+  root@192.168.168.1 'cd /tmp && tar czf oem-snapshot.tgz oem-snapshot-* && ls -la oem-snapshot.tgz'
+scp -O -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+  root@192.168.168.1:/tmp/oem-snapshot.tgz .
 ```
 
 （`scp` 建议同样带上文的 **`HostkeyAlgorithms` / `PubkeyAcceptedAlgorithms`**，与 `ssh` 一致。）
@@ -67,7 +81,8 @@ scp -O root@192.168.168.1:/tmp/oem-snapshot.tgz .
 可选：指定输出目录（设备上可写路径）：
 
 ```sh
-ssh root@192.168.168.1 "OEM_SNAPSHOT_DIR=/root/oem-snap sh -s" < oem-dt/collect-oem-snapshot.sh
+ssh -o HostkeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+  root@192.168.168.1 "OEM_SNAPSHOT_DIR=/root/oem-snap sh -s" < oem-dt/collect-oem-snapshot.sh
 ```
 
 ## 设备树等（历史说明）
