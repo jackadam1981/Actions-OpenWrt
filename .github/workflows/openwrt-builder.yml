@@ -31,6 +31,13 @@ on:
         description: '只编列出的目录（逗号分隔）。默认 dir-505,hiker-x9；清空则扫描 targets/ 下全部（仍跳过 _ 前缀），可配合 exclude_targets'
         type: string
         default: 'dir-505,hiker-x9'
+      hiker_x9_profile:
+        description: '仅当 only_targets 仅为 hiker-x9 时生效：all=全部 Device；standard-only=仅标准版（用 targets/hiker-x9/.config.standard-only，省 self-hosted 时间）'
+        type: choice
+        options:
+          - all
+          - standard-only
+        default: all
       exclude_targets:
         description: '可选：only_targets 留空时跳过这些目录名（逗号分隔），例 x86-64。仅 workflow_dispatch 且 baseline_only=false 时生效'
         type: string
@@ -77,6 +84,14 @@ jobs:
           exit 0
         fi
         if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.only_targets }}" ]; then
+          HI_PROFILE="${{ inputs.hiker_x9_profile }}"
+          if [ "$HI_PROFILE" = "standard-only" ]; then
+            stripped="$(echo "${{ inputs.only_targets }}" | tr -d '[:space:]')"
+            if [ "$stripped" != "hiker-x9" ]; then
+              echo "::error::hiker_x9_profile=standard-only 要求 only_targets 仅为 hiker-x9（可含空格，不得含其它目录或逗号）" >&2
+              exit 1
+            fi
+          fi
           configs="["
           first=1
           IFS=',' read -ra ONLY_ARR <<< "${{ inputs.only_targets }}"
@@ -87,6 +102,9 @@ jobs:
               _*) echo "::error::only_targets 不允许以下划线开头的目录: $name" >&2; exit 1 ;;
             esac
             cfg="$TARGETS_DIR/$name/.config"
+            if [ "$name" = "hiker-x9" ] && [ "$HI_PROFILE" = "standard-only" ]; then
+              cfg="$TARGETS_DIR/$name/.config.standard-only"
+            fi
             if [ ! -f "$cfg" ]; then
               echo "::error::找不到 $cfg" >&2
               exit 1
@@ -151,11 +169,16 @@ jobs:
     - name: Set target name and config slug
       run: |
         cfg="${{ matrix.config }}"
-        if [[ "$cfg" == targets/*/.config ]]; then
-          TARGET_NAME="${cfg#targets/}"
-          TARGET_NAME="${TARGET_NAME%/.config}"
-          echo "TARGET_NAME=$TARGET_NAME" >> $GITHUB_ENV
-          echo "CONFIG_SLUG=$TARGET_NAME" >> $GITHUB_ENV
+        if [[ "$cfg" == targets/*/.config* ]]; then
+          td="$(dirname "$cfg")"
+          bn="$(basename "$cfg")"
+          TN="$(basename "$td")"
+          echo "TARGET_NAME=$TN" >> $GITHUB_ENV
+          if [[ "$bn" == ".config" ]]; then
+            echo "CONFIG_SLUG=$TN" >> $GITHUB_ENV
+          else
+            echo "CONFIG_SLUG=${TN}-${bn#.config.}" >> $GITHUB_ENV
+          fi
         else
           echo "TARGET_NAME=" >> $GITHUB_ENV
           echo "CONFIG_SLUG=$(echo "$cfg" | sed 's/\//-/g')" >> $GITHUB_ENV
