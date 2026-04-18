@@ -22,6 +22,12 @@ echo "写入: $OUT"
 	echo
 	echo "=== /etc/os-release ==="
 	cat /etc/os-release 2>/dev/null || echo "(missing)"
+	if [ -r /usr/lib/os-release ]; then
+		echo
+		echo "=== /usr/lib/os-release ==="
+		cat /usr/lib/os-release 2>/dev/null || true
+		cp /usr/lib/os-release "$OUT/usr_lib_os_release.txt" 2>/dev/null || true
+	fi
 } >"$OUT/system_release.txt"
 
 uname -a >"$OUT/uname.txt" 2>&1

@@ -1,0 +1,14 @@
+=== /etc/openwrt_release ===
+DISTRIB_ID='OpenWrt'
+DISTRIB_RELEASE='Chaos Calmer'
+DISTRIB_REVISION='plus'
+DISTRIB_CODENAME='chaos_calmer'
+DISTRIB_TARGET='ramips/rt305x'
+DISTRIB_DESCRIPTION='OpenWrt Chaos Calmer 15.05'
+DISTRIB_TAINTS='no-all'
+
+=== /etc/os-release ===
+../usr/lib/os-release
+
+=== /usr/lib/os-release ===
+（完整内容见同目录 `usr_lib_os_release.txt`；本机 `/etc/os-release` 仅为存根。）
