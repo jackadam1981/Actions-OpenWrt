@@ -33,10 +33,12 @@ TARGET_DEVICES += hiker_x9-minimal
 
 define Device/hiker_x9-minimal-baseline
 	$(call Device/hiker_hiker-common)
-	DEVICE_MODEL := Hiker X9 Minimal (baseline)
+	# 与 minimal 同 DTS；包栈 = 上游 ramips/rt305x「小路由」默认（rt305x/target.mk
+	# 的 DEFAULT_PACKAGES + include/target.mk 路由器 profile），不对 DEVICE_PACKAGES
+	# 做精简，仅追加 urngd（首启熵）。对标 DIR-505 等「只写板级、包交给 target」机型。
+	DEVICE_MODEL := Hiker X9 Baseline
 	DEVICE_DTS := rt5350_hiker_x9-minimal
 	SUPPORTED_DEVICES := hiker,x9-minimal-baseline hiker,x9 HIKER
-	# 上游默认栈 + urngd（减轻首启 dropbearkey 等因熵不足变慢）。
 	DEVICE_PACKAGES := urngd
 endef
 TARGET_DEVICES += hiker_x9-minimal-baseline

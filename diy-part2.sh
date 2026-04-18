@@ -28,7 +28,7 @@ apply_target_overlay() {
 
 # 应用当前 target 的 target/、package/、etc/ 覆盖（矩阵编译时 TARGET_NAME/TARGETS_DIR 由工作流传入）
 if [ -n "${TARGET_NAME}" ] && [ -n "${TARGETS_DIR}" ] && [ -n "${GITHUB_WORKSPACE}" ]; then
-  # baseline-only：.config 在 targets/_hiker-x9-baseline-only/，设备与 image 定义仍在 targets/hiker-x9/
+  # baseline-only：.config 在 _hiker-x9-baseline-only/；hiker.mk 里 baseline = 上游小路由默认包 +urngd，overlay 仍用 hiker-x9/
   if [ "${TARGET_NAME}" = "_hiker-x9-baseline-only" ]; then
     apply_target_overlay "${GITHUB_WORKSPACE}/${TARGETS_DIR}/hiker-x9"
   fi

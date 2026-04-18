@@ -24,7 +24,7 @@ on:
           - self-hosted
         default: github-hosted
       baseline_only:
-        description: 'true=仅编 baseline；上游默认包栈+同 minimal DTS，无 hiker defaults；LAN 多为 192.168.1.1 常有 DHCP，勿用 192.168.100.1 测'
+        description: 'true=仅编 baseline；与上游 ramips/rt305x 小路由默认同栈+同 minimal DTS，仅多 urngd；无 hiker defaults；LAN 多为 192.168.1.1，勿用 192.168.100.1 测'
         type: boolean
         default: false
       only_targets:

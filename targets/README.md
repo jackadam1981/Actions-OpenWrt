@@ -26,12 +26,12 @@
 
 ## hiker-x9 与 openwrt-custom-devices
 
-当前 hiker-x9 采用 **ramips / rt305x + 设备 overlay** 的方式扩展，不再依赖单独的 `printserver` target。仓库会在构建时把 `targets/hiker-x9/target/linux/ramips/`** 合并进 OpenWrt 源码树，并把额外的 `hiker.mk` 接入 `rt305x.mk`。
+当前 hiker-x9 采用 **ramips / rt305x + 设备 overlay** 的方式扩展，不再依赖单独的 `printserver` target。仓库会在构建时把 `targets/hiker-x9/target/linux/ramips/` **合并**进 OpenWrt 源码树，并把额外的 `hiker.mk` 接入 `rt305x.mk`。
 
-**上游 OpenWrt 里 `SOC := rt5350` 的常见写法**（见官方 `[target/linux/ramips/image/rt305x.mk](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)`）：多数 **家用路由** 条目只写 `SOC` / `IMAGE_SIZE` / `DEVICE_VENDOR` / `DEVICE_MODEL` / `SUPPORTED_DEVICES`（及个别 `IMAGES`），**不写 `DEVICE_PACKAGES`**，即完全交给 `**target/linux/ramips/rt305x/target.mk**` 里的 `**DEFAULT_PACKAGES += kmod-rt2800-soc wpad-basic-mbedtls swconfig**`，再叠 `**include/target.mk**` 里 **路由器类型** 的默认包（`dnsmasq`、`firewall`、`odhcpd-ipv6only`、`ppp` 等，随版本略有变动）。只有在板子带 **USB / 摄像头 / SPI 等额外硬件** 时，上游才在 `DEVICE_PACKAGES` 里 **追加** `kmod-usb-*`、`kmod-video-*` 等，而不是像本仓 `minimal` 那样大面积 `**-包名` 精简**。例如同文件中的 `**dlink_dir-300-b7`**、`**dlink_dir-320-b1`**、`**belkin_f7c027**`、`**omnima_miniembplug**` 等 rt5350 机型均无 `DEVICE_PACKAGES`；`**7links_px-4885-***`、`**dlink_dcs-930l-b1**` 等则只加与硬件相关的 kmod。开发板 `**8devices_carambola**` 显式写了 `**DEVICE_PACKAGES :=`（空）** 表示「零额外包」。`**hiker_x9-minimal-baseline`** 在 **走 ramips/rt305x + 路由器默认栈** 的前提下，**仅追加 `urngd`**（与上游「只加 kmod 类」同属小范围附加）。
+**上游 OpenWrt 里 `SOC := rt5350` 的常见写法**（见官方 `[target/linux/ramips/image/rt305x.mk](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)`）：多数 **家用路由** 条目只写 `SOC` / `IMAGE_SIZE` / `DEVICE_VENDOR` / `DEVICE_MODEL` / `SUPPORTED_DEVICES`（及个别 `IMAGES`），**不写 `DEVICE_PACKAGES`**，即完全交给 `**target/linux/ramips/rt305x/target.mk**` 里的 `**DEFAULT_PACKAGES += kmod-rt2800-soc wpad-basic-mbedtls swconfig**`，再叠 `**include/target.mk**` 里 **路由器类型** 的默认包（`dnsmasq`、`firewall`、`odhcpd-ipv6only`、`ppp` 等，随版本略有变动）。只有在板子带 **USB / 摄像头 / SPI 等额外硬件** 时，上游才在 `DEVICE_PACKAGES` 里 **追加** `kmod-usb-*`、`kmod-video-*` 等，而不是像本仓 `minimal` 那样大面积 `**-包名` 精简**。例如同文件中的 `**dlink_dir-300-b7`**、`**dlink_dir-320-b1`**、`**belkin_f7c027**`、`**omnima_miniembplug**` 等 rt5350 机型均无 `DEVICE_PACKAGES`；`**7links_px-4885-***`、`**dlink_dcs-930l-b1**` 等则只加与硬件相关的 kmod。开发板 `**8devices_carambola**` 显式写了 `**DEVICE_PACKAGES :=`（空）** 表示「零额外包」。`**hiker_x9-minimal-baseline`**：**包栈对齐上游 ramips/rt305x「小路由」默认**（[`rt305x/target.mk` 的 DEFAULT_PACKAGES](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/rt305x/target.mk) + 路由器 profile 常见默认如 `dnsmasq` / `firewall` / `ppp` 等，随上游版本略有变动），**不做 `−包名` 式精简**；**仅追加 `urngd`**（首启熵）。与 DIR-505 等「只写板级信息、包交给 target」的上游机型同思路，便于和本仓 **`minimal`** 对照。
 
 - **targets/hiker-x9/.config**：`CONFIG_TARGET_ramips=y`、`CONFIG_TARGET_ramips_rt305x=y`、`**CONFIG_TARGET_MULTI_PROFILE=y`**、`**CONFIG_TARGET_PER_DEVICE_ROOTFS=y`**，以及多个 `**CONFIG_TARGET_DEVICE_ramips_rt305x_DEVICE_<机型>=y**`（注意是 `**TARGET_DEVICE_…**` 前缀，不是 `TARGET_ramips_rt305x_DEVICE_…`；后者属于单 profile 的 choice，与多选互斥）。否则 `make defconfig` 会收成单一 `CONFIG_TARGET_PROFILE`，只编出一个 profile。默认同时编译：
-  - `**hiker_x9-minimal-baseline`（`targets/_hiker-x9-baseline-only/.config` / workflow `baseline_only`）**：与 `minimal` **同 DTS**；包集合 **按 ramips/rt305x 上游默认**，**仅追加 `urngd`**（加快首启熵），**不装** `hiker-x9-minimal-defaults`。用于与 `minimal`（自定义 strip + `192.168.100.1`）对比首启；**不要**仍用 `192.168.100.1` 去 ping baseline。详见 `targets/_hiker-x9-baseline-only/README.md`。
+  - **`hiker_x9-minimal-baseline`**（[`targets/_hiker-x9-baseline-only/.config`](_hiker-x9-baseline-only/.config)、workflow **`baseline_only`**）：与 **`minimal`** **同 DTS**；**包 = 上游小路由默认 + `urngd`**；**不装** `hiker-x9-minimal-defaults`。LAN 多为 **`192.168.1.1`**、常有 DHCP；**勿用** `192.168.100.1` 测。详见 [`targets/_hiker-x9-baseline-only/README.md`](_hiker-x9-baseline-only/README.md)。
   - `hiker_x9-minimal`（**黄金底镜像**：有线 LAN + `luci-light` 与基础中文界面；不拉 WiFi AP用户态，并从该 profile 去掉 `wpad` / `iw` / `iwinfo`。**实测参考**：刷写后 LAN 侧用 `ping-until-up` 计时至首次 **ping 通** 约 **680 s**（约 11 min，随环境与存储略有出入）；**LAN 为 `192.168.100.1`**（由 `hiker-x9-minimal-defaults` 写入））
   - `hiker_x9-factory`（**官版首刷**：与 minimal 类似的精简栈，另含 `**hiker-x9-breed-autoflash`**；生成 `**factory.bin`**，**可由官版 / 原厂 Web 或恢复流程直接刷入**；刷机后见下文「红灯不再闪烁」再断电操作）
   - `hiker_x9-p910nd`
@@ -98,7 +98,7 @@
 
 #### 读表提示
 
-- `**hiker_x9-factory`**：显式包与 **minimal** 同表思路，另加 `**hiker-x9-breed-autoflash`**，并定义 `**IMAGES += factory.bin`**；**官版首刷请选该 profile 产物 `factory.bin`**，勿与仅 `sysupgrade` 的 profile 混用在原厂恢复页上。
+- `**hiker_x9-factory`**：显式包与 minimal 同表思路，另加 `**hiker-x9-breed-autoflash`**，并定义 `**IMAGES += factory.bin`**；**官版首刷请选该 profile 产物 `factory.bin`**，勿与仅 `sysupgrade` 的 profile 混用在原厂恢复页上。
 - `**p910nd-wifi` / `virtualhere-wifi` / `both-wifi**`：`−wpad-basic-mbedtls` 与 `**+wpad-mbedtls**` 搭配，避免两套 wpad 冲突（与历史构建错误同源）。
 - **每个功能 profile 对应一个 `hiker-x9-*-defaults` 包**（目录在 `package/network/services/`），首启逻辑与 banner 分 profile 维护；**复位键脚本** 集中在 `**hiker-x9-reset-button`**；`**both*`** 仍不复用 `**virtualhere-*-defaults**`。
 - `**minimal**`：保留 LuCI 与中文，`**+hiker-x9-minimal-defaults**`，且 `**−wpad-basic-mbedtls**`、`**−iw` / `−iwinfo**`；内核里是否仍带无线相关模块取决于全局内核配置，不在本表范围。
@@ -138,16 +138,15 @@
 
 构建产物位于 OpenWrt 源码树内的 `bin/targets/...`（CI 中随 Artifact 下载）。根据本仓各 target 推断镜像类型、分区与 Wiki 对照的步骤见 [docs/flashing-from-bin-and-source.md](../docs/flashing-from-bin-and-source.md)。
 
-**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 [`scripts/ping-until-up.ps1`](../scripts/ping-until-up.ps1)，Linux / macOS 用 [`scripts/ping-until-up.sh`](../scripts/ping-until-up.sh)（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。**`.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错；探测使用 **.NET ICMP**（与 `ping` 一致），**不用** `Test-Connection -TimeoutSeconds`（PS 5.1 无该参数，会恒失败）。系统内刷写并计全程见 [`scripts/measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1)（PuTTY 0.78+ 需 `-PlinkHostKey` 与 `-pwfile` 空密码）。**ping 通后 Web 仍可能未就绪**时，可加 **`-ProbeTcpPortAfterPing 80`**，在 ICMP 恢复后继续探测 **TCP 80** 并打出 **ICMP→TCP** 间隔与 **SCP→TCP** 总时长；[`measure-reboot-recovery.ps1`](../scripts/measure-reboot-recovery.ps1) 同样支持该参数。
+**刷机后测「多久能 ping 通」**：本仓提供计时探测脚本——Windows 用 `[scripts/ping-until-up.ps1](../scripts/ping-until-up.ps1)`，Linux / macOS 用 `[scripts/ping-until-up.sh](../scripts/ping-until-up.sh)`（刷机完成、PC 接好 LAN 后在本机执行，默认 ping `192.168.1.1`，通为止会打印耗时秒数）。`**.ps1` 运行时提示为英文**（UTF-8 BOM + 无中文串），避免 Windows PowerShell 5.x 在无 BOM/系统页下把中文解析乱导致报错；探测使用 **.NET ICMP**（与 `ping` 一致），**不用** `Test-Connection -TimeoutSeconds`（PS 5.1 无该参数，会恒失败）。系统内刷写并计全程见 `[scripts/measure-sysupgrade-recovery.ps1](../scripts/measure-sysupgrade-recovery.ps1)`（PuTTY 0.78+ 需 `-PlinkHostKey` 与 `-pwfile` 空密码）。**ping 通后 Web 仍可能未就绪**时，可加 `**-ProbeTcpPortAfterPing 80`**，在 ICMP 恢复后继续探测 **TCP 80** 并打出 **ICMP→TCP** 间隔与 **SCP→TCP** 总时长；`[measure-reboot-recovery.ps1](../scripts/measure-reboot-recovery.ps1)` 同样支持该参数。
 
-**实测记录（供预期）**：下列时间为 **秒（s）**；**SCP→ICMP**、**SCP→TCP80** 指自本机 **SCP 开始** 到脚本判定恢复；**掉线→通** / **宽限→ICMP** 见 [`measure-sysupgrade-recovery.ps1`](../scripts/measure-sysupgrade-recovery.ps1) 报告（宽限默认 30s，宽限后须 **先 ICMP 掉线再通**）。**「—」** 表示当次未测或未记录。**`-PlinkHostKey`** 在 **`-n`** 刷机后常会变；**跨 ar71xx/ath79** 等设备校验不通过时脚本侧可能加 **`-ForceImage`**（设备端 `sysupgrade -F`）。同机多次刷写负载不同，**仅作粗预期**。
+**实测记录（供预期）**：下列时间为 **秒（s）**；**SCP→ICMP**、**SCP→TCP80** 指自本机 **SCP 开始** 到脚本判定恢复；**掉线→通** / **宽限→ICMP** 见 `[measure-sysupgrade-recovery.ps1](../scripts/measure-sysupgrade-recovery.ps1)` 报告（宽限默认 30s，宽限后须 **先 ICMP 掉线再通**）。**「—」** 表示当次未测或未记录。`**-PlinkHostKey`** 在 `**-n**` 刷机后常会变；**跨 ar71xx/ath79** 等设备校验不通过时脚本侧可能加 `**-ForceImage`**（设备端 `sysupgrade -F`）。同机多次刷写负载不同，**仅作粗预期**。
 
-| 设备 | 场景 / 镜像 | 条件摘要 | SCP→ICMP | 掉线→通 | 宽限→ICMP | 首次掉线 (SCP 后) | ICMP→TCP80 | SCP→TCP80 | 备注 |
-|------|-------------|----------|----------|---------|-----------|-------------------|-------------|------------|------|
-| D-Link DIR-505 | U-Boot / 恢复页，**19.07.8 官方 factory** | 非本脚本；PC 计时首 ICMP | **86.6** | — | — | — | — | — | 约 **90s 内**粗预期；与 sysupgrade 路径不同 |
-| D-Link DIR-505 | **19.07.8** `…ar71xx…sysupgrade.bin` | `192.168.1.1`、`-NoKeepConfig`、Plink | **103.7** | 42.0 | 65.3 | 61.7 | — | — | 无 `-ProbeTcpPortAfterPing` |
-| D-Link DIR-505 | **19.07.8** ar71xx sysupgrade | 同上 + **TCP80** | **133.6** | 72.0 | 94.9 | 61.6 | **0.1** | **133.7** | Web 与 ICMP 几乎同时好 |
-| D-Link DIR-505 | **25.12.0 ath79** `…ath79…sysupgrade.bin` | 自 ar71xx 升 ath79、**`-F`**、TCP80 | **110.1** | 18.0 | 68.5 | 92.1 | **76.7** | **186.7** | ping 通后 **Web 仍晚约 77s** |
-| D-Link DIR-505 | **19.07.8** ar71xx sysupgrade | 自 **25.12 ath79** 刷回、**`-F`**、TCP80 | **76.9** | 12.0 | 40.1 | 64.9 | **44.1** | **121.0** | **本轮**；与上表非同一冷启动基线 |
-| Hiker X9 | **hiker_x9-minimal** | LAN 首 ICMP（`ping-until-up` 类） | **680** | — | — | — | — | — | 非 sysupgrade 脚本；负载与 U 盘影响大 |
+
+| 设备             | 场景 / 镜像                                   | 条件摘要                                | SCP→ICMP  | 掉线→通 | 宽限→ICMP | 首次掉线 (SCP 后) | ICMP→TCP80 | SCP→TCP80 | 备注                               |
+| -------------- | ----------------------------------------- | ----------------------------------- | --------- | ---- | ------- | ------------ | ---------- | --------- | -------------------------------- |
+| D-Link DIR-505 | U-Boot / 恢复页，**19.07.8 官方 factory**       | 非本脚本；PC 计时首 ICMP                    | **86.6**  | —    | —       | —            | —          | —         | 约 **90s 内**粗预期；与 sysupgrade 路径不同 |
+| D-Link DIR-505 | **25.12.0 ath79** `…ath79…sysupgrade.bin` | 自 ar71xx 升 ath79、`**-F`**、TCP80     | **110.1** | 18.0 | 68.5    | 92.1         | **76.7**   | **186.7** | ping 通后 **Web 仍晚约 77s**          |
+| D-Link DIR-505 | **19.07.8** ar71xx sysupgrade             | 自 **25.12 ath79** 刷回、`**-F`**、TCP80 | **76.9**  | 12.0 | 40.1    | 64.9         | **44.1**   | **121.0** | ping 通后 **Web 仍晚约 44s**          |
+
 

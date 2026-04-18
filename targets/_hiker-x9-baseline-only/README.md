@@ -1,12 +1,12 @@
 # `_hiker-x9-baseline-only`（workflow：`baseline_only`）
 
-与 **`hiker_x9-minimal`** 共用 **同一 DTS**（`rt5350_hiker_x9-minimal`）。**`hiker_x9-minimal-baseline`** 在 **上游默认包栈** 之上 **仅追加 `urngd`**（减轻首启 `dropbearkey` 因熵不足变慢）；策略说明见 **`targets/README.md`**「上游 OpenWrt 里 `SOC := rt5350` 的常见写法」及官方 [`rt305x.mk`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)。
+与 **`hiker_x9-minimal`** 共用 **同一 DTS**（`rt5350_hiker_x9-minimal`）。**`hiker_x9-minimal-baseline`** 的 **`DEVICE_PACKAGES` 只有 `urngd`**：即 **ramips/rt305x 上游「小路由」默认包栈**（`dnsmasq`、`firewall`、`ppp`、`wpad` 等，随 OpenWrt 版本略有变动），**与 DIR-505 类上游镜像同档思路**，不做本仓 `minimal` 那种大面积 `−包名` 精简。策略说明见 **`targets/README.md`** 及官方 [`rt305x.mk`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)、[`rt305x/target.mk`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/rt305x/target.mk)。
 
 用途：对比 **「无本仓 uci-defaults、无自定义 strip」** 下的启动行为；一般比 `minimal` **更快拿到 DHCP / ping 通**（若仍极慢，再查刷机方式或硬件）。
 
 ## 联机与 ping（与 `minimal` 对比）
 
-| 项目 | `hiker_x9-minimal` | `hiker_x9-minimal-baseline`（当前） |
+| 项目 | `hiker_x9-minimal` | `hiker_x9-minimal-baseline`（上游小路由默认 + `urngd`） |
 |------|--------------------|--------------------------------------|
 | LAN 地址 | **`192.168.100.1`**（defaults 写入） | 多为 **`192.168.1.1`**（上游默认） |
 | DHCP | 无（profile 曾 strip `dnsmasq`） | **通常有**（保留上游默认 dnsmasq 等） |
