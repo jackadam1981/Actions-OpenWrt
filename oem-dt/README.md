@@ -4,11 +4,13 @@
 
 ## 再收集：版本 + opkg 清单
 
-在 PC 上（仓库根或本目录）对路由器执行（将 `192.168.1.1` 换成实际 LAN 地址）：
+**当前 OEM / 现场 LAN 为 `192.168.168.1` 时**，在 PC 上（仓库根或本目录）执行：
 
 ```sh
-ssh root@192.168.1.1 'sh -s' < oem-dt/collect-oem-snapshot.sh
+ssh root@192.168.168.1 'sh -s' < oem-dt/collect-oem-snapshot.sh
 ```
+
+（本仓 X9 **baseline** 等镜像 LAN 多为 `192.168.1.1`；以你设备实际管理地址为准，把下面命令里的 IP 换掉即可。）
 
 脚本在路由器上生成目录：`/tmp/oem-snapshot-YYYYMMDD-HHMMSS/`，内含：
 
@@ -26,8 +28,8 @@ ssh root@192.168.1.1 'sh -s' < oem-dt/collect-oem-snapshot.sh
 在路由器上打包并拷回：
 
 ```sh
-ssh root@192.168.1.1 'cd /tmp && tar czf oem-snapshot.tgz oem-snapshot-* && ls -la oem-snapshot.tgz'
-scp root@192.168.1.1:/tmp/oem-snapshot.tgz .
+ssh root@192.168.168.1 'cd /tmp && tar czf oem-snapshot.tgz oem-snapshot-* && ls -la oem-snapshot.tgz'
+scp root@192.168.168.1:/tmp/oem-snapshot.tgz .
 ```
 
 解压后，可将其中文件 **合并或替换** 进 `oem-dt/`（与现有 `proc_mtd.txt`、`model.txt` 等对齐命名即可），并把 **`opkg_list_installed.txt` / `opkg_count.txt`** 一并纳入版本库，便于以后对比。
@@ -35,7 +37,7 @@ scp root@192.168.1.1:/tmp/oem-snapshot.tgz .
 可选：指定输出目录（设备上可写路径）：
 
 ```sh
-ssh root@192.168.1.1 "OEM_SNAPSHOT_DIR=/root/oem-snap sh -s" < oem-dt/collect-oem-snapshot.sh
+ssh root@192.168.168.1 "OEM_SNAPSHOT_DIR=/root/oem-snap sh -s" < oem-dt/collect-oem-snapshot.sh
 ```
 
 ## 设备树等（历史说明）
