@@ -3,7 +3,7 @@
 #include "rt5350.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/input/input.h>
+#include <dt-bindings/input/linux-event-codes.h>
 #include <dt-bindings/leds/common.h>
 
 / {
@@ -15,26 +15,30 @@
 		label-mac-device = &ethernet;
 	};
 
-	gpio-keys-polled {
-		compatible = "gpio-keys-polled";
-		poll-interval = <20>;
+	/*
+	 * 物理拨动 / 按键：用 gpio-keys + debounce-interval（内核 gpio_keys 驱动），
+	 * 替代 gpio-keys-polled。linux,code 与旧固件一致：BTN_0/1/2 == 0x100..0x102。
+	 */
+	keys: gpio-keys {
+		compatible = "gpio-keys";
+		debounce-interval = <20>;
 
-		usb {
+		switch_usb {
 			label = "button usb";
 			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
-			linux,code = <0x100>;
+			linux,code = <BTN_0>;
 		};
 
-		wan {
+		switch_wan {
 			label = "button wan";
 			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
-			linux,code = <0x101>;
+			linux,code = <BTN_1>;
 		};
 
-		3g {
+		switch_threeg {
 			label = "button 3g";
 			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
-			linux,code = <0x102>;
+			linux,code = <BTN_2>;
 		};
 
 		reset {
