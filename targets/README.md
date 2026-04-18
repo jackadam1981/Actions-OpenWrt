@@ -44,6 +44,7 @@
   - `hiker_x9-both-wifi`（同上 + **AP WiFi 栈**）
 - `**package/network/services/`** 下与上述功能 profile 对应的 defaults 目录（各含 `Makefile` + `files/`）：`hiker-x9-minimal-defaults`、`**hiker-x9-standard-defaults**`、`hiker-x9-p910nd-defaults`、`hiker-x9-p910nd-wifi-defaults`、`hiker-x9-virtualhere-defaults`、`hiker-x9-virtualhere-wifi-defaults`、`hiker-x9-both-defaults`、`hiker-x9-both-wifi-defaults`（`**hiker_x9-factory` 复用 `hiker-x9-minimal-defaults`**，无单独 `*-factory-defaults`）；另有共用的 `**virtualhere-usb-server`** 与 `**hiker-x9-reset-button**`（安装 `/etc/rc.button/reset`，各 `*-defaults` 通过 `DEPENDS` 拉入）。
 - 若要继续扩展 hiker-x9 新版本，可在 `targets/hiker-x9/target/linux/ramips/image/hiker.mk` 增加新的 `Device/...` profile，并按需补 `dts/`、`package/`、`etc/`。
+- **OpenWrt / 内核口径（含 `hiker_x9-standard` 与其它 X9 profile）**：默认 CI 见 [`.github/workflows/openwrt-builder.yml`](../.github/workflows/openwrt-builder.yml)：**`REPO_BRANCH=master`**、源码 **`https://github.com/openwrt/openwrt`**，即官方 **OpenWrt 主线开发快照**（刷机后 `/etc/openwrt_release` 多为 **SNAPSHOT**），**不是** OEM 的 **Chaos Calmer 15.05**。内核与上游 **`target/linux/ramips`** 一致；其 [`Makefile`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/Makefile) 里 **`KERNEL_PATCHVER`** 会随主线 bump（查阅时常见 **6.12**，另有 **`KERNEL_TESTING_PATCHVER`** 如 6.18，未单独启用 testing 则走默认线）。**精确 `6.12.x` / 发行说明**以**你那次编译所 checkout 的 `master` 提交**及生成的 `version.buildinfo` 为准。「最新」在这里指 **跟 trunk**，**不等于**「当前已发布的稳定版号」（如某 `24.xx.x` 标签）。
 
 ### 首启很慢、SSH 很久才通（常见原因）
 
