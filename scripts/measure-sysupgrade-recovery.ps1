@@ -59,6 +59,21 @@
 .PARAMETER SkipPingPrecheck
   跳过刷写前 ICMP 预检。
 
+.PARAMETER LegacySshRsaHostKey
+  为 ssh/scp 追加 HostkeyAlgorithms/PubkeyAcceptedAlgorithms 的 +ssh-rsa（旧 Dropbear / OEM 仅 RSA 主机密钥）。
+
+.PARAMETER ScpLegacyProtocol
+  为 scp 追加 -O，走旧 SCP 协议（无 /usr/libexec/sftp-server 的 Chaos Calmer 等）。
+
+.PARAMETER NoSshIdentity
+  不传 -i 私钥、不用 BatchMode=yes，依赖 ssh 默认（如空密码 root 或 agent）。与 -LegacySshRsaHostKey 常一起用于 OEM。
+
+.PARAMETER RecoveryTargets
+  刷机后用于「恢复探测」的 LAN 地址，逗号分隔（如 192.168.1.1）。空则与 -Target 相同。典型：SSH 连 192.168.168.1，刷完新系统在 192.168.1.1。
+
+.PARAMETER DownDetectTarget
+  判定「已掉线」时 ping 的地址；默认同 -Target。与 -RecoveryTargets 不同时，先等本地址连续失败再等恢复地址任一 ping 通。
+
 .PARAMETER ProbeTcpPortAfterPing
   大于 0 时，在「掉线后再 ping 通」之后继续探测该 TCP 端口（常用 80 = HTTP）。0 表示不测。
 
@@ -76,6 +91,9 @@
 
 .EXAMPLE
   .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.1.1 -Image .\Firmware\sysupgrade.bin -PlinkNoPassword -PlinkHostKey "SHA256:YOUR_FINGERPRINT"
+
+.EXAMPLE
+  .\scripts\measure-sysupgrade-recovery.ps1 -Target 192.168.168.1 -Image .\Firmware\*.bin -RecoveryTargets 192.168.1.1 -LegacySshRsaHostKey -ScpLegacyProtocol -NoSshIdentity -NoKeepConfig -ForceImage -ProbeTcpPortAfterPing 80
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -99,7 +117,12 @@ param(
     [int] $ProbeTcpPortAfterPing = 0,
     [int] $MaxWaitTcpSeconds = 600,
     [int] $TcpConnectTimeoutMs = 2000,
-    [switch] $SkipPingPrecheck
+    [switch] $SkipPingPrecheck,
+    [switch] $LegacySshRsaHostKey,
+    [switch] $ScpLegacyProtocol,
+    [switch] $NoSshIdentity,
+    [string] $RecoveryTargets = "",
+    [string] $DownDetectTarget = ""
 )
 
 Set-StrictMode -Version 3
@@ -117,6 +140,31 @@ function Test-IcmpReachable {
     } finally {
         if ($null -ne $pinger) { $pinger.Dispose() }
     }
+}
+
+function Test-IcmpAnyReachable {
+    param(
+        [string[]] $Hosts,
+        [int] $TimeoutMs
+    )
+    foreach ($h in $Hosts) {
+        if ([string]::IsNullOrWhiteSpace($h)) { continue }
+        if (Test-IcmpReachable -HostOrIp $h.Trim() -TimeoutMs $TimeoutMs) { return $true }
+    }
+    return $false
+}
+
+function Test-TcpAnyOpen {
+    param(
+        [string[]] $Hosts,
+        [int] $Port,
+        [int] $ConnectTimeoutMs
+    )
+    foreach ($h in $Hosts) {
+        if ([string]::IsNullOrWhiteSpace($h)) { continue }
+        if (Test-TcpPortOpen -HostOrIp $h.Trim() -Port $Port -ConnectTimeoutMs $ConnectTimeoutMs) { return $true }
+    }
+    return $false
 }
 
 function Test-TcpPortOpen {
@@ -183,8 +231,8 @@ if ($PlinkNoPassword) {
         Write-Error "PlinkNoPassword requires pscp.exe and plink.exe. Tried -PuttyDirectory '$PuttyDirectory', then PATH and Program Files\PuTTY. pscp=$pscpExe plink=$plinkExe"
         exit 2
     }
-} elseif (-not (Test-Path -LiteralPath $SshKey)) {
-    Write-Error "SSH key not found: $SshKey (use -PlinkNoPassword for root with empty password via PuTTY)"
+} elseif (-not $NoSshIdentity -and -not (Test-Path -LiteralPath $SshKey)) {
+    Write-Error "SSH key not found: $SshKey (use -NoSshIdentity for root empty password / agent, or -PlinkNoPassword for PuTTY)"
     exit 2
 }
 
@@ -211,6 +259,13 @@ if (-not $SkipPingPrecheck) {
 
 $sshBase = if ($PlinkNoPassword) {
     @()
+} elseif ($NoSshIdentity) {
+    @(
+        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", "ConnectTimeout=30",
+        "-o", "ConnectionAttempts=1",
+        "-o", "BatchMode=no"
+    )
 } else {
     @(
         "-i", $SshKey,
@@ -220,6 +275,23 @@ $sshBase = if ($PlinkNoPassword) {
         "-o", "ConnectionAttempts=1"
     )
 }
+if ($LegacySshRsaHostKey) {
+    $sshBase = $sshBase + @(
+        "-o", "HostkeyAlgorithms=+ssh-rsa",
+        "-o", "PubkeyAcceptedAlgorithms=+ssh-rsa"
+    )
+}
+
+if ([string]::IsNullOrWhiteSpace($RecoveryTargets)) {
+    $recoveryHostList = @($Target)
+} else {
+    $recoveryHostList = @(
+        $RecoveryTargets.Split(",") |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -ne "" }
+    )
+}
+$downHost = if ([string]::IsNullOrWhiteSpace($DownDetectTarget)) { $Target } else { $DownDetectTarget.Trim() }
 
 $swTotal = [Diagnostics.Stopwatch]::StartNew()
 
@@ -255,7 +327,9 @@ if ($PlinkNoPassword) {
         exit 1
     }
 } else {
-    $scpArgs = $sshBase + @(
+    $scpArgs = @()
+    if ($ScpLegacyProtocol) { $scpArgs += "-O" }
+    $scpArgs = $sshBase + $scpArgs + @(
         "-C",
         $imageFull,
         "${SshUser}@${Target}:${RemotePath}"
@@ -327,34 +401,50 @@ $firstDownAt = $null
 $firstUpAfterDownAt = $null
 
 $maxLabel = if ($MaxWaitSeconds -gt 0) { "${MaxWaitSeconds}s from SCP start" } else { "unlimited (SCP start)" }
-Write-Host "Probing ping recovery (max $maxLabel, interval ${IntervalSeconds}s; require down then up after grace)..."
+Write-Host "Probing recovery (max $maxLabel, interval ${IntervalSeconds}s): wait '$downHost' ICMP down, then any of [$($recoveryHostList -join ', ')] ICMP up."
 while ($true) {
     $elapsed = $swTotal.Elapsed
     if ($MaxWaitSeconds -gt 0 -and $elapsed.TotalSeconds -ge $MaxWaitSeconds) {
         Write-Host ("TIMEOUT after {0:F1}s from SCP start." -f $elapsed.TotalSeconds)
         if ($null -eq $firstDownAt) {
-            Write-Host "Hint: ICMP never went down after grace. Reboot/flash may have finished during grace, or link stayed up (still old stack). ICMP OK is not proof NAND finished — see LEDs; try larger -InitialGraceSeconds or check sysupgrade."
+            Write-Host "Hint: '$downHost' never went down after grace. Try larger -InitialGraceSeconds or check sysupgrade / cable."
+        } else {
+            Write-Host "Hint: no ICMP from recovery hosts [$($recoveryHostList -join ', ')] after down."
         }
         exit 1
     }
 
-    $ok = Test-IcmpReachable -HostOrIp $Target -TimeoutMs $PingTimeoutMs
-    if ($ok) {
-        if ($null -ne $firstDownAt) {
-            $firstUpAfterDownAt = $elapsed
-            break
-        }
-        $downProbes = 0
-    } else {
+    $okDown = Test-IcmpReachable -HostOrIp $downHost -TimeoutMs $PingTimeoutMs
+    if (-not $okDown) {
         if ($elapsed.TotalSeconds -ge $probeStartSec) {
             $downProbes++
             if ($downProbes -ge $MinDownProbes -and $null -eq $firstDownAt) {
                 $firstDownAt = $elapsed
-                Write-Host ("[{0,6:F1}s from SCP] Link appears down (ICMP failed x{1})." -f $elapsed.TotalSeconds, $downProbes)
+                Write-Host ("[{0,6:F1}s from SCP] '$downHost' appears down (ICMP failed x{1})." -f $elapsed.TotalSeconds, $downProbes)
             }
         }
+    } else {
+        $downProbes = 0
     }
 
+    if ($null -ne $firstDownAt) { break }
+
+    $sleepMs = [int]([Math]::Max(50, [Math]::Round($IntervalSeconds * 1000.0)))
+    Start-Sleep -Milliseconds $sleepMs
+}
+
+Write-Host "Waiting for ICMP on recovery host(s)..."
+while ($true) {
+    $elapsed = $swTotal.Elapsed
+    if ($MaxWaitSeconds -gt 0 -and $elapsed.TotalSeconds -ge $MaxWaitSeconds) {
+        Write-Host ("TIMEOUT after {0:F1}s from SCP start (recovery ICMP)." -f $elapsed.TotalSeconds)
+        exit 1
+    }
+    if (Test-IcmpAnyReachable -Hosts $recoveryHostList -TimeoutMs $PingTimeoutMs) {
+        $firstUpAfterDownAt = $elapsed
+        Write-Host ("[{0,6:F1}s from SCP] Recovery ICMP OK (one of: $($recoveryHostList -join ', '))." -f $elapsed.TotalSeconds)
+        break
+    }
     $sleepMs = [int]([Math]::Max(50, [Math]::Round($IntervalSeconds * 1000.0)))
     Start-Sleep -Milliseconds $sleepMs
 }
@@ -373,7 +463,7 @@ if ($ProbeTcpPortAfterPing -gt 0) {
             Write-Error "TIMEOUT: TCP port ${ProbeTcpPortAfterPing} did not accept connections within ${MaxWaitTcpSeconds}s after ICMP recovery."
             exit 1
         }
-        if (Test-TcpPortOpen -HostOrIp $Target -Port $ProbeTcpPortAfterPing -ConnectTimeoutMs $TcpConnectTimeoutMs) {
+        if (Test-TcpAnyOpen -Hosts $recoveryHostList -Port $ProbeTcpPortAfterPing -ConnectTimeoutMs $TcpConnectTimeoutMs) {
             $durTcpAfterIcmpSec = $swTcp.Elapsed.TotalSeconds
             $totalScpToTcpSec = $swTotal.Elapsed.TotalSeconds
             Write-Host ("TCP port {0} open {1:F1}s after ICMP recovery ({2:F1}s from SCP start)." -f $ProbeTcpPortAfterPing, $durTcpAfterIcmpSec, $totalScpToTcpSec)
@@ -387,13 +477,19 @@ if ($ProbeTcpPortAfterPing -gt 0) {
 
 Write-Host ""
 Write-Host "========== SYSUPGRADE RECOVERY REPORT =========="
-Write-Host ("Target:                 {0}" -f $Target)
+Write-Host ("SSH/SCP target:         {0}" -f $Target)
+Write-Host ("Down-detect ICMP:      {0}" -f $downHost)
+Write-Host ("Recovery ICMP/TCP:     {0}" -f ($recoveryHostList -join ", "))
 Write-Host ("Image:                  {0}" -f $imageFull)
 if ($PlinkNoPassword) {
     Write-Host ("Auth:                   Plink -pwfile ({0}, {1})" -f $pscpExe, $plinkExe)
+} elseif ($NoSshIdentity) {
+    Write-Host "Auth:                   NoSshIdentity (no -i, BatchMode=no)"
 } else {
     Write-Host ("SSH key:                {0}" -f $SshKey)
 }
+if ($LegacySshRsaHostKey) { Write-Host "SSH host key:           +ssh-rsa (LegacySshRsaHostKey)" }
+if ($ScpLegacyProtocol) { Write-Host "SCP:                    legacy -O" }
 Write-Host ("SCP upload:             {0:F1} s" -f $durScp.TotalSeconds)
 Write-Host ("SSH sysupgrade:         {0:F1} s" -f $durSsh.TotalSeconds)
 Write-Host ("Initial grace:          {0} s   (after command/disconnect; not flash-complete)" -f $InitialGraceSeconds)
