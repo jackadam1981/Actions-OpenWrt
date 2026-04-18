@@ -43,7 +43,8 @@ permissions:
 
 env:
   REPO_URL: https://github.com/openwrt/openwrt
-  REPO_BRANCH: master
+  # 稳定发行分支（非 master SNAPSHOT）。升级系列时改为例如 openwrt-25.12 并核对 overlay 兼容性。
+  REPO_BRANCH: openwrt-24.10
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   TARGETS_DIR: targets

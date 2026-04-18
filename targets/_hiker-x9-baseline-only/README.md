@@ -1,6 +1,6 @@
 # `_hiker-x9-baseline-only`（workflow：`baseline_only`）
 
-与 **`hiker_x9-minimal`** 共用 **同一 DTS**（`rt5350_hiker_x9-minimal`）。**`hiker_x9-minimal-baseline`** 的 **`DEVICE_PACKAGES` 只有 `urngd`**：即 **ramips/rt305x 上游「小路由」默认包栈**（`dnsmasq`、`firewall`、`ppp`、`wpad` 等，随 OpenWrt 版本略有变动），**与 DIR-505 类上游镜像同档思路**，不做本仓 `minimal` 那种大面积 `−包名` 精简。策略说明见 **`targets/README.md`** 及官方 [`rt305x.mk`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/image/rt305x.mk)、[`rt305x/target.mk`](https://github.com/openwrt/openwrt/blob/master/target/linux/ramips/rt305x/target.mk)。
+与 **`hiker_x9-minimal`** 共用 **同一 DTS**（`rt5350_hiker_x9-minimal`）。**`hiker_x9-minimal-baseline`** 的 **`DEVICE_PACKAGES` 只有 `urngd`**：即 **ramips/rt305x 上游「小路由」默认包栈**（`dnsmasq`、`firewall`、`ppp`、`wpad` 等，随 OpenWrt 版本略有变动），**与 DIR-505 类上游镜像同档思路**，不做本仓 `minimal` 那种大面积 `−包名` 精简。策略说明见 **`targets/README.md`** 及官方 [`rt305x.mk`](https://github.com/openwrt/openwrt/blob/openwrt-24.10/target/linux/ramips/image/rt305x.mk)、[`rt305x/target.mk`](https://github.com/openwrt/openwrt/blob/openwrt-24.10/target/linux/ramips/rt305x/target.mk)（与 CI 默认分支一致）。
 
 用途：对比 **「无本仓 uci-defaults、无自定义 strip」** 下的启动行为；一般比 `minimal` **更快拿到 DHCP / ping 通**（若仍极慢，再查刷机方式或硬件）。
 
