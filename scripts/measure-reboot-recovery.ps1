@@ -7,6 +7,10 @@
   汇报：SSH 下发到首次 ping 通总时长；宽限期后至 ping 通时长；若宽限后曾观测掉线再恢复，则汇报掉线→恢复。
   可选 -ProbeTcpPortAfterPing 80：ICMP 恢复后再测 TCP（Web 常晚于 ping）。
 
+  **能 SSH 时**比单纯 `ping-until-up` 更适合测「重启到恢复」：本脚本会发 `reboot`、给宽限期、再要求**先观测掉线再 ping 通**，避免「设备其实没重启 / 宽限内一直通」的误判。
+
+  老设备（Dropbear 只提供 **RSA 主机密钥**）若 OpenSSH 报 `no matching host key type … ssh-rsa`，请加 **-LegacySshRsaHostKey**。
+
 .PARAMETER Target
   设备 LAN IP（baseline 多为 192.168.1.1；minimal 多为 192.168.100.1）。
 
@@ -40,8 +44,14 @@
 .PARAMETER TcpConnectTimeoutMs
   单次 TCP 连接超时（毫秒）。
 
+.PARAMETER LegacySshRsaHostKey
+  为 ssh 追加 `HostkeyAlgorithms=+ssh-rsa` 与 `PubkeyAcceptedAlgorithms=+ssh-rsa`（适配旧 Dropbear / OEM 仅 RSA 主机密钥）。
+
 .EXAMPLE
   .\scripts\measure-reboot-recovery.ps1 -Target 192.168.1.1 -SshKey "$env:USERPROFILE\.ssh\hiker_x9_cursor"
+
+.EXAMPLE
+  .\scripts\measure-reboot-recovery.ps1 -Target 192.168.168.1 -SshKey "$env:USERPROFILE\.ssh\hiker_x9_cursor" -LegacySshRsaHostKey -ProbeTcpPortAfterPing 80
 #>
 param(
     [string] $Target = "192.168.1.1",
@@ -54,7 +64,8 @@ param(
     [int] $InitialGraceSeconds = 30,
     [int] $ProbeTcpPortAfterPing = 0,
     [int] $MaxWaitTcpSeconds = 600,
-    [int] $TcpConnectTimeoutMs = 2000
+    [int] $TcpConnectTimeoutMs = 2000,
+    [switch] $LegacySshRsaHostKey
 )
 
 Set-StrictMode -Version 3
@@ -119,20 +130,27 @@ if (-not $preOk) {
 }
 Write-Host "Pre-check OK."
 
-$sshArgs = @(
+$sshArgs = [System.Collections.Generic.List[string]]::new()
+$sshArgs.AddRange(@(
     "-i", $SshKey,
     "-o", "BatchMode=yes",
     "-o", "StrictHostKeyChecking=accept-new",
     "-o", "ConnectTimeout=10",
-    "-o", "ConnectionAttempts=1",
-    "${SshUser}@${Target}",
-    "sync; reboot"
-)
+    "-o", "ConnectionAttempts=1"
+))
+if ($LegacySshRsaHostKey) {
+    $sshArgs.Add("-o")
+    $sshArgs.Add("HostkeyAlgorithms=+ssh-rsa")
+    $sshArgs.Add("-o")
+    $sshArgs.Add("PubkeyAcceptedAlgorithms=+ssh-rsa")
+}
+$sshArgs.Add("${SshUser}@${Target}")
+$sshArgs.Add("sync; reboot")
 
 Write-Host "Issuing reboot via SSH..."
 $swTotal = [Diagnostics.Stopwatch]::StartNew()
 try {
-    & ssh.exe @sshArgs 2>&1 | Out-Null
+    & ssh.exe @($sshArgs.ToArray()) 2>&1 | Out-Null
 } catch {
     # 连接被对端 reset 为常态
 }
