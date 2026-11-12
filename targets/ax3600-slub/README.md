@@ -57,6 +57,8 @@ AX3600 的 `bootargs` 由 U-Boot 传入，DTS 只有 `bootargs-append = " root=/
 ## 校验
 
 构建日志里 `=== DIFFCONFIG BEGIN/END ===` 之间是本次实际的 `diffconfig` 输出。
-`expected.diffconfig` 是断言基线：**目前是手工推导值**，首次构建后需用实测输出校正（见该文件说明）。
-硬断言（缺一个就 fail）包括：`KERNEL_SLUB_DEBUG=y`、`KERNEL_KALLSYMS=y`、
-`KERNEL_SLUB_DEBUG_ON` 不存在、`ALL_KMODS` 不存在、`dnsmasq-full=y` 且 `dnsmasq` 不存在。
+`expected.diffconfig` 是断言基线，已由 2026-11-12 首次构建的实测输出整段替换；
+若日后有意改动配置，用同一段日志整段覆盖该文件，否则构建会在该 step 硬失败。
+硬断言（缺一个就 fail）包括：`KERNEL_SLUB_DEBUG=y`（查 diffconfig）、`KERNEL_KALLSYMS=y`（查 `.config`，
+默认即 y 的符号不会出现在 diffconfig 里）、`KERNEL_SLUB_DEBUG_ON` 不存在、`ALL_KMODS` 不存在、
+`dnsmasq-full=y` 且 `dnsmasq` 不存在。

@@ -330,10 +330,17 @@ jobs:
             fail=1
           fi
         }
+        # 默认就是 y 的符号不会出现在 diffconfig 里，只能查 defconfig 之后的 .config
+        need_cfg_yes() {
+          if ! grep -qx "CONFIG_$1=y" .config; then
+            echo "::error::.config 缺少 CONFIG_$1=y"
+            fail=1
+          fi
+        }
 
         need_yes "TARGET_DEVICE_qualcommax_ipq807x_DEVICE_xiaomi_ax3600"
         need_yes "KERNEL_SLUB_DEBUG"
-        need_yes "KERNEL_KALLSYMS"
+        need_cfg_yes "KERNEL_KALLSYMS"
         need_no  "KERNEL_SLUB_DEBUG_ON"
         need_no  "ALL_KMODS"
         need_no  "ALL_NONSHARED"
@@ -346,7 +353,8 @@ jobs:
         base="$GITHUB_WORKSPACE/targets/${TARGET_NAME}/expected.diffconfig"
         if [ -f "$base" ]; then
           if ! diff -u <(sort "$base") "$RUNNER_TEMP/diffconfig.actual"; then
-            echo "::warning::diffconfig 与 expected.diffconfig 不一致（首次构建属预期：按上面 diff 校正基线后可改为硬失败）"
+            echo "::error::diffconfig 与 expected.diffconfig 不一致；若差异是有意的，请用上面的 === DIFFCONFIG BEGIN/END === 段整段替换该文件"
+            exit 1
           fi
         else
           echo "::warning::未找到 $base，跳过基线对比"
