@@ -64,6 +64,10 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
+  # 历史保护开关：'true' 时跳过"删除旧 workflow run"和"删除旧 Release"两个收尾清理步骤。
+  # 首次验证 ax3600 构建期间保持 true，避免把既有固件产物和历史 run 记录删掉；
+  # 验证完成后改回 'false'（或删掉本行）即恢复原有清理行为。
+  PRESERVE_HISTORY: 'true'
   # CCACHE_DIR is set in "Prepare workdir" (must match WORKDIR).
   CCACHE_COMPRESS: 'true'
   CCACHE_MAXSIZE: 2G
@@ -301,6 +305,53 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
+    - name: Assert config (diffconfig baseline)
+      run: |
+        set -euo pipefail
+        cd openwrt
+        grep -q '^CONFIG_CCACHE=' .config 2>/dev/null || echo 'CONFIG_CCACHE=y' >> .config
+        make defconfig >/dev/null
+        ./scripts/diffconfig.sh | sort > "$RUNNER_TEMP/diffconfig.actual"
+
+        echo "=== DIFFCONFIG BEGIN ==="
+        cat "$RUNNER_TEMP/diffconfig.actual"
+        echo "=== DIFFCONFIG END ==="
+
+        fail=0
+        need_yes() {
+          if ! grep -qx "CONFIG_$1=y" "$RUNNER_TEMP/diffconfig.actual"; then
+            echo "::error::diffconfig 缺少 CONFIG_$1=y"
+            fail=1
+          fi
+        }
+        need_no() {
+          if grep -qx "CONFIG_$1=y" "$RUNNER_TEMP/diffconfig.actual"; then
+            echo "::error::diffconfig 不该出现 CONFIG_$1=y"
+            fail=1
+          fi
+        }
+
+        need_yes "TARGET_DEVICE_qualcommax_ipq807x_DEVICE_xiaomi_ax3600"
+        need_yes "KERNEL_SLUB_DEBUG"
+        need_yes "KERNEL_KALLSYMS"
+        need_no  "KERNEL_SLUB_DEBUG_ON"
+        need_no  "ALL_KMODS"
+        need_no  "ALL_NONSHARED"
+        need_no  "PACKAGE_dnsmasq"
+        need_yes "PACKAGE_dnsmasq-full"
+        if [ "$fail" -ne 0 ]; then
+          exit 1
+        fi
+
+        base="$GITHUB_WORKSPACE/targets/${TARGET_NAME}/expected.diffconfig"
+        if [ -f "$base" ]; then
+          if ! diff -u <(sort "$base") "$RUNNER_TEMP/diffconfig.actual"; then
+            echo "::warning::diffconfig 与 expected.diffconfig 不一致（首次构建属预期：按上面 diff 校正基线后可改为硬失败）"
+          fi
+        else
+          echo "::warning::未找到 $base，跳过基线对比"
+        fi
+
     - name: Download package
       id: package
       run: |
@@ -330,6 +381,21 @@ jobs:
           exit 1
         fi
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' | head -5 || true
+
+    # 跟分支 HEAD 编译（不钉 commit），所以必须把这次实际用的源码版本留在产物里，
+    # 否则同一天两次构建的文件名相同但内容不同，事后无法追溯。
+    - name: Record source revision into firmware dir
+      if: steps.compile.outputs.status == 'success'
+      run: |
+        set -euo pipefail
+        cd openwrt
+        sha="$(git rev-parse HEAD)"
+        echo "source commit: $sha"
+        for d in bin/targets/*/*; do
+          [ -d "$d" ] || continue
+          printf 'repo=%s\nbranch=%s\ncommit=%s\n' "$REPO_URL" "$REPO_BRANCH" "$sha" > "$d/COMMIT.txt"
+        done
+        cat bin/targets/*/*/COMMIT.txt
 
     - name: Save OpenWrt dl + ccache
       if: (!cancelled()) && runner.environment != 'self-hosted'
@@ -430,6 +496,35 @@ jobs:
         done
         ls -la _release_assets | head -80
 
+    # 从各 artifact 里的 COMMIT.txt 汇总源码版本，写进 release body。
+    - name: Generate release body with source revisions
+      if: env.UPLOAD_RELEASE == 'true'
+      run: |
+        set -euo pipefail
+        {
+          echo "多配置构建。固件文件名规则：\`YYYYMMDD-<repo>-<profile...>.bin\`"
+          echo "（\`<repo>\` 取 \`REPO_URL\` 的仓库名；去掉 \`<repo>-TARGET-SUBTARGET-\` 与开头的 \`generic-\`，其余部分前置 \`<repo>-\`）。"
+          echo ""
+          echo "| 配置 | 源码仓库 | 分支 | 源码 commit |"
+          echo "| --- | --- | --- | --- |"
+          for d in OpenWrt_firmware_*; do
+            [ -d "$d" ] || continue
+            slug="${d#OpenWrt_firmware_}"
+            f=$(find "$d" -maxdepth 2 -name COMMIT.txt | head -1)
+            if [ -z "$f" ]; then
+              echo "| \`$slug\` | - | - | -（未找到 COMMIT.txt） |"
+              continue
+            fi
+            repo=$(sed -n 's/^repo=//p' "$f" | head -1)
+            branch=$(sed -n 's/^branch=//p' "$f" | head -1)
+            commit=$(sed -n 's/^commit=//p' "$f" | head -1)
+            echo "| \`$slug\` | $repo | \`$branch\` | \`$commit\` |"
+          done
+          echo ""
+          echo "元数据文件保持 \`<target>_<name>\` 命名；重名时前置 \`<target>_\`。"
+        } > "$RUNNER_TEMP/release_body.md"
+        cat "$RUNNER_TEMP/release_body.md"
+
     - name: Upload firmware to release
       if: env.UPLOAD_RELEASE == 'true'
       uses: softprops/action-gh-release@v2.6.1
@@ -437,12 +532,11 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body: |
-          Multi-config build. Firmware files: `YYYYMMDD[-<version>]-<repo>-<profile...>.bin` (`<repo>` is the GitHub repo name from `REPO_URL`, e.g. `openwrt` or `immortalwrt`; optional version from each target's `version.buildinfo`; strip `<repo>-TARGET-SUBTARGET-` and a leading `generic-`, then keep `<repo>-` on the remainder).
-          Metadata files stay as `<target>_<name>`. On name clash, `<target>_` is prepended.
+        body_path: ${{ runner.temp }}/release_body.md
         files: _release_assets/*
 
     - name: Delete workflow runs
+      if: env.PRESERVE_HISTORY != 'true'
       uses: Mattraks/delete-workflow-runs@v2
       with:
         token: ${{ github.token }}
@@ -451,7 +545,7 @@ jobs:
         keep_minimum_runs: 2
 
     - name: Remove old Releases
-      if: env.UPLOAD_RELEASE == 'true'
+      if: env.PRESERVE_HISTORY != 'true' && env.UPLOAD_RELEASE == 'true'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
