@@ -445,7 +445,8 @@ jobs:
 
   release:
     needs: build
-    if: ${{ !cancelled() }}
+    # build 失败时不要继续，否则会发一个 0 资产的空 Release（2026-11-12 首跑实测踩到）
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-22.04
     steps:
     - name: Download all firmware artifacts
